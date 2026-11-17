@@ -4,16 +4,29 @@ import Header from './components/Header'
 import Home from './pages/Home'
 import Pagina from './pages/Pagina'
 import MinhaColheita from './pages/MinhaColheita'
+import CadastrarColheita from './pages/CadastrarColheita'
+import DetalhesColheita from './pages/DetalhesColheita'
 import Tarefas from './pages/Tarefas'
 import Vendas from './pages/Vendas'
+import Financeiro from './pages/Financeiro'
 import FAQ from './pages/FAQ'
 
 const paginas = [
-  { nome: 'Sobre', rota: '/sobre', descricao: 'Conheça o ColheitaSmart.' },
-  { nome: 'Integrantes', rota: '/integrantes', descricao: 'Conheça nossa equipe.' },
-  { nome: 'FAQ', rota: '/faq', descricao: 'Perguntas frequentes.' },
-  { nome: 'Contato', rota: '/contato', descricao: 'Entre em contato.' },
-  { nome: 'Carteira', rota: '/financeiro', descricao: 'Acompanhe suas finanças.' },
+  {
+    nome: 'Sobre',
+    rota: '/sobre',
+    descricao: 'Conheça o ColheitaSmart.',
+  },
+  {
+    nome: 'Integrantes',
+    rota: '/integrantes',
+    descricao: 'Conheça nossa equipe.',
+  },
+  {
+    nome: 'Contato',
+    rota: '/contato',
+    descricao: 'Entre em contato.',
+  },
 ]
 
 export default function App() {
@@ -25,8 +38,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/colheitas" element={<MinhaColheita />} />
+          <Route path="/colheitas/nova" element={<CadastrarColheita />} />
+          <Route path="/colheitas/:id" element={<DetalhesColheita />} />
           <Route path="/tarefas" element={<Tarefas />} />
           <Route path="/vendas" element={<Vendas />} />
+          <Route path="/financeiro" element={<Financeiro />} />
           <Route path="/faq" element={<FAQ />} />
 
           {paginas.map(pagina => (
