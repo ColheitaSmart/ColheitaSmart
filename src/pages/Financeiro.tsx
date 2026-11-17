@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Sprout,
@@ -22,6 +23,7 @@ import {
 type Venda = {
   id: string
   anuncioId: string
+  loteId?: string
   produto: string
   quantidade: number
   preco: number
@@ -46,6 +48,9 @@ type Movimentacao = {
   tipo: 'receita' | 'despesa'
 }
 
+const CHAVE_VENDAS = 'colheitasmart_vendas'
+const CHAVE_DESPESAS = 'colheitasmart_despesas'
+
 const categorias = [
   'Transporte',
   'Embalagens',
@@ -64,7 +69,10 @@ const formatarMoeda = (valor: number) =>
 function carregarDados<T>(chave: string): T[] {
   try {
     const conteudo = localStorage.getItem(chave)
-    const dados: unknown = conteudo ? JSON.parse(conteudo) : []
+    const dados: unknown = conteudo
+      ? JSON.parse(conteudo)
+      : []
+
     return Array.isArray(dados) ? dados as T[] : []
   } catch {
     return []
@@ -77,6 +85,7 @@ function converterData(data: string): number {
   if (partes.length !== 3) return 0
 
   const [dia, mes, ano] = partes.map(Number)
+
   return new Date(ano, mes - 1, dia).getTime()
 }
 
@@ -85,16 +94,23 @@ function obterDataAtual(): string {
 }
 
 function gerarId(): string {
-  return crypto.randomUUID()
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID()
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
 export default function Financeiro() {
   const [vendas, setVendas] = useState<Venda[]>(() =>
-    carregarDados<Venda>('colheitasmart_vendas')
+    carregarDados<Venda>(CHAVE_VENDAS)
   )
 
   const [despesas, setDespesas] = useState<Despesa[]>(() =>
-    carregarDados<Despesa>('colheitasmart_despesas')
+    carregarDados<Despesa>(CHAVE_DESPESAS)
   )
 
   const [modalAberto, setModalAberto] = useState(false)
@@ -102,90 +118,136 @@ export default function Financeiro() {
   const [categoria, setCategoria] = useState('Transporte')
   const [valor, setValor] = useState('')
   const [erro, setErro] = useState('')
-  const [filtro, setFiltro] = useState<'todas' | 'receitas' | 'despesas'>('todas')
+
+  const [filtro, setFiltro] = useState<
+    'todas' | 'receitas' | 'despesas'
+  >('todas')
 
   useEffect(() => {
     localStorage.setItem(
-      'colheitasmart_despesas',
+      CHAVE_DESPESAS,
       JSON.stringify(despesas)
     )
   }, [despesas])
 
   useEffect(() => {
-    function atualizarVendas() {
-      setVendas(carregarDados<Venda>('colheitasmart_vendas'))
+    function atualizarDados() {
+      setVendas(
+        carregarDados<Venda>(CHAVE_VENDAS)
+      )
+      setDespesas(
+        carregarDados<Despesa>(CHAVE_DESPESAS)
+      )
     }
 
-    window.addEventListener('focus', atualizarVendas)
-    window.addEventListener('storage', atualizarVendas)
+    function aoMudarStorage(evento: StorageEvent) {
+      if (
+        evento.key === null ||
+        evento.key === CHAVE_VENDAS ||
+        evento.key === CHAVE_DESPESAS
+      ) {
+        atualizarDados()
+      }
+    }
+
+    window.addEventListener('focus', atualizarDados)
+    window.addEventListener('pageshow', atualizarDados)
+    window.addEventListener('storage', aoMudarStorage)
 
     return () => {
-      window.removeEventListener('focus', atualizarVendas)
-      window.removeEventListener('storage', atualizarVendas)
+      window.removeEventListener('focus', atualizarDados)
+      window.removeEventListener('pageshow', atualizarDados)
+      window.removeEventListener('storage', aoMudarStorage)
     }
   }, [])
 
   const receitas = useMemo(
-    () => vendas.reduce(
-      (total, venda) =>
-        total + Number(venda.quantidade) * Number(venda.preco),
-      0
-    ),
+    () =>
+      vendas.reduce(
+        (total, venda) =>
+          total +
+          Number(venda.quantidade) * Number(venda.preco),
+        0
+      ),
     [vendas]
   )
 
   const totalDespesas = useMemo(
-    () => despesas.reduce(
-      (total, despesa) => total + Number(despesa.valor),
-      0
-    ),
+    () =>
+      despesas.reduce(
+        (total, despesa) =>
+          total + Number(despesa.valor),
+        0
+      ),
     [despesas]
   )
 
   const resultado = receitas - totalDespesas
 
   const movimentacoes = useMemo<Movimentacao[]>(() => {
-    const receitasRegistradas: Movimentacao[] = vendas.map(venda => ({
-      id: `venda-${venda.id}`,
-      titulo: `Venda de ${venda.produto}`,
-      subtitulo: `${venda.quantidade} kg • ${venda.comprador}`,
-      valor: Number(venda.quantidade) * Number(venda.preco),
-      data: venda.data,
-      tipo: 'receita',
-    }))
+    const receitasRegistradas: Movimentacao[] =
+      vendas.map(venda => ({
+        id: `venda-${venda.id}`,
+        titulo: `Venda de ${venda.produto}`,
+        subtitulo: `${venda.quantidade} kg • ${venda.comprador}`,
+        valor:
+          Number(venda.quantidade) * Number(venda.preco),
+        data: venda.data,
+        tipo: 'receita',
+      }))
 
-    const despesasRegistradas: Movimentacao[] = despesas.map(despesa => ({
-      id: `despesa-${despesa.id}`,
-      titulo: despesa.descricao,
-      subtitulo: despesa.categoria,
-      valor: despesa.valor,
-      data: despesa.data,
-      tipo: 'despesa',
-    }))
+    const despesasRegistradas: Movimentacao[] =
+      despesas.map(despesa => ({
+        id: `despesa-${despesa.id}`,
+        titulo: despesa.descricao,
+        subtitulo: despesa.categoria,
+        valor: despesa.valor,
+        data: despesa.data,
+        tipo: 'despesa',
+      }))
 
-    return [...receitasRegistradas, ...despesasRegistradas]
-      .sort((a, b) => converterData(b.data) - converterData(a.data))
+    return [
+      ...receitasRegistradas,
+      ...despesasRegistradas,
+    ].sort(
+      (a, b) =>
+        converterData(b.data) - converterData(a.data)
+    )
   }, [vendas, despesas])
 
-  const movimentacoesFiltradas = movimentacoes.filter(item => {
-    if (filtro === 'receitas') return item.tipo === 'receita'
-    if (filtro === 'despesas') return item.tipo === 'despesa'
-    return true
-  })
+  const movimentacoesFiltradas =
+    movimentacoes.filter(item => {
+      if (filtro === 'receitas') {
+        return item.tipo === 'receita'
+      }
 
-  const despesasPorCategoria = categorias.map(nome => ({
-    nome,
-    valor: despesas
-      .filter(item => item.categoria === nome)
-      .reduce((total, item) => total + item.valor, 0),
-  })).filter(item => item.valor > 0)
+      if (filtro === 'despesas') {
+        return item.tipo === 'despesa'
+      }
+
+      return true
+    })
+
+  const despesasPorCategoria = categorias
+    .map(nome => ({
+      nome,
+      valor: despesas
+        .filter(item => item.categoria === nome)
+        .reduce(
+          (total, item) => total + Number(item.valor),
+          0
+        ),
+    }))
+    .filter(item => item.valor > 0)
 
   const maiorDespesa = Math.max(
     ...despesasPorCategoria.map(item => item.valor),
     1
   )
 
-  function cadastrarDespesa(evento: React.FormEvent<HTMLFormElement>) {
+  function cadastrarDespesa(
+    evento: FormEvent<HTMLFormElement>
+  ) {
     evento.preventDefault()
 
     const valorNumerico = Number(valor)
@@ -195,8 +257,15 @@ export default function Financeiro() {
       return
     }
 
-    if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
-      setErro('Informe um valor maior que zero.')
+    if (
+      !Number.isFinite(valorNumerico) ||
+      valorNumerico <= 0 ||
+      Math.round(valorNumerico * 100) / 100 !==
+      valorNumerico
+    ) {
+      setErro(
+        'Informe um valor válido com até duas casas decimais.'
+      )
       return
     }
 
@@ -208,7 +277,10 @@ export default function Financeiro() {
       data: obterDataAtual(),
     }
 
-    setDespesas(anteriores => [novaDespesa, ...anteriores])
+    setDespesas(anteriores => [
+      novaDespesa,
+      ...anteriores,
+    ])
 
     setDescricao('')
     setCategoria('Transporte')
@@ -307,16 +379,23 @@ export default function Financeiro() {
                     {indicador.titulo}
                   </span>
 
-                  <span className={`rounded-xl p-3 ${indicador.fundo}`}>
-                    <Icone size={22} className={indicador.cor} />
+                  <span
+                    className={`rounded-xl p-3 ${indicador.fundo}`}
+                  >
+                    <Icone
+                      size={22}
+                      className={indicador.cor}
+                    />
                   </span>
                 </div>
 
-                <p className={`mt-5 text-3xl font-extrabold ${
-                  indicador.titulo === 'Resultado' && resultado < 0
+                <p
+                  className={`mt-5 text-3xl font-extrabold ${indicador.titulo === 'Resultado' &&
+                    resultado < 0
                     ? 'text-red-700'
                     : 'text-[#073B2C]'
-                }`}>
+                    }`}
+                >
                   {formatarMoeda(indicador.valor)}
                 </p>
 
@@ -335,12 +414,16 @@ export default function Financeiro() {
                 <p className="text-sm font-semibold text-lime-300">
                   VISÃO FINANCEIRA
                 </p>
+
                 <h2 className="mt-2 text-2xl font-extrabold">
                   Resultado da colheita
                 </h2>
               </div>
 
-              <Wallet size={32} className="text-[#B8F34B]" />
+              <Wallet
+                size={32}
+                className="text-[#B8F34B]"
+              />
             </div>
 
             <p className="mt-9 text-sm text-green-100">
@@ -357,6 +440,7 @@ export default function Financeiro() {
                   <ArrowUpRight size={17} />
                   Entradas
                 </p>
+
                 <p className="mt-2 text-xl font-bold">
                   {formatarMoeda(receitas)}
                 </p>
@@ -367,6 +451,7 @@ export default function Financeiro() {
                   <ArrowDownRight size={17} />
                   Saídas
                 </p>
+
                 <p className="mt-2 text-xl font-bold">
                   {formatarMoeda(totalDespesas)}
                 </p>
@@ -380,6 +465,7 @@ export default function Financeiro() {
                 size={23}
                 className="text-green-700"
               />
+
               <h2 className="text-xl font-extrabold text-[#073B2C]">
                 Resumo financeiro
               </h2>
@@ -408,7 +494,8 @@ export default function Financeiro() {
                   1
                 )
 
-                const largura = (item.valor / maiorValor) * 100
+                const largura =
+                  (item.valor / maiorValor) * 100
 
                 return (
                   <div key={item.nome}>
@@ -425,7 +512,9 @@ export default function Financeiro() {
                     <div className="h-4 overflow-hidden rounded-full bg-slate-100">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${item.cor}`}
-                        style={{ width: `${largura}%` }}
+                        style={{
+                          width: `${largura}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -452,6 +541,7 @@ export default function Financeiro() {
                 <h2 className="text-2xl font-extrabold text-[#073B2C]">
                   Movimentações
                 </h2>
+
                 <p className="mt-2 text-sm text-slate-500">
                   Acompanhe suas entradas e saídas.
                 </p>
@@ -466,12 +556,15 @@ export default function Financeiro() {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setFiltro(item.id as typeof filtro)}
-                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-                      filtro === item.id
-                        ? 'bg-[#073B2C] text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-green-50'
-                    }`}
+                    onClick={() =>
+                      setFiltro(
+                        item.id as typeof filtro
+                      )
+                    }
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${filtro === item.id
+                      ? 'bg-[#073B2C] text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-green-50'
+                      }`}
                   >
                     {item.nome}
                   </button>
@@ -502,11 +595,12 @@ export default function Financeiro() {
                     className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-100 p-4 sm:flex-row sm:items-center"
                   >
                     <div className="flex items-center gap-4">
-                      <span className={`rounded-xl p-3 ${
-                        item.tipo === 'receita'
+                      <span
+                        className={`rounded-xl p-3 ${item.tipo === 'receita'
                           ? 'bg-green-50 text-green-700'
                           : 'bg-orange-50 text-orange-700'
-                      }`}>
+                          }`}
+                      >
                         {item.tipo === 'receita'
                           ? <ArrowUpRight size={22} />
                           : <ArrowDownRight size={22} />}
@@ -529,12 +623,15 @@ export default function Financeiro() {
                     </div>
 
                     <div className="flex items-center justify-between gap-4 sm:justify-end">
-                      <span className={`font-extrabold ${
-                        item.tipo === 'receita'
+                      <span
+                        className={`font-extrabold ${item.tipo === 'receita'
                           ? 'text-green-700'
                           : 'text-orange-700'
-                      }`}>
-                        {item.tipo === 'receita' ? '+' : '-'}
+                          }`}
+                      >
+                        {item.tipo === 'receita'
+                          ? '+'
+                          : '-'}
                         {formatarMoeda(item.valor)}
                       </span>
 
@@ -542,7 +639,11 @@ export default function Financeiro() {
                         <button
                           type="button"
                           onClick={() =>
-                            excluirDespesa(item.id.replace('despesa-', ''))
+                            excluirDespesa(
+                              item.id.slice(
+                                'despesa-'.length
+                              )
+                            )
                           }
                           aria-label={`Excluir ${item.titulo}`}
                           title="Excluir despesa"
@@ -561,7 +662,11 @@ export default function Financeiro() {
           <div className="space-y-6">
             <section className="rounded-3xl border border-green-100 bg-white p-7 shadow-sm">
               <div className="flex items-center gap-3">
-                <ReceiptText size={23} className="text-green-700" />
+                <ReceiptText
+                  size={23}
+                  className="text-green-700"
+                />
+
                 <h2 className="text-xl font-extrabold text-[#073B2C]">
                   Gastos por categoria
                 </h2>
@@ -573,6 +678,7 @@ export default function Financeiro() {
                     size={37}
                     className="mx-auto text-green-700"
                   />
+
                   <p className="mt-3 text-sm text-slate-500">
                     Cadastre suas despesas para acompanhar
                     os principais custos.
@@ -596,7 +702,9 @@ export default function Financeiro() {
                         <div
                           className="h-full rounded-full bg-[#89C83D] transition-all duration-500"
                           style={{
-                            width: `${(item.valor / maiorDespesa) * 100}%`,
+                            width: `${(item.valor / maiorDespesa) *
+                              100
+                              }%`,
                           }}
                         />
                       </div>
@@ -617,8 +725,8 @@ export default function Financeiro() {
               </h2>
 
               <p className="mt-3 text-sm leading-relaxed text-slate-700">
-                Crie ofertas, registre suas vendas e acompanhe
-                o resultado na Carteira.
+                Crie ofertas, registre suas vendas e
+                acompanhe o resultado na Carteira.
               </p>
 
               <Link
@@ -673,7 +781,9 @@ export default function Financeiro() {
                   required
                   maxLength={100}
                   value={descricao}
-                  onChange={evento => setDescricao(evento.target.value)}
+                  onChange={evento =>
+                    setDescricao(evento.target.value)
+                  }
                   placeholder="Ex.: Transporte dos tomates"
                   className="w-full rounded-xl border border-slate-200 p-4 outline-none focus:border-green-600"
                 />
@@ -690,11 +800,16 @@ export default function Financeiro() {
                 <select
                   id="categoriaDespesa"
                   value={categoria}
-                  onChange={evento => setCategoria(evento.target.value)}
+                  onChange={evento =>
+                    setCategoria(evento.target.value)
+                  }
                   className="w-full rounded-xl border border-slate-200 p-4 outline-none focus:border-green-600"
                 >
                   {categorias.map(item => (
-                    <option key={item} value={item}>
+                    <option
+                      key={item}
+                      value={item}
+                    >
                       {item}
                     </option>
                   ))}
@@ -716,14 +831,19 @@ export default function Financeiro() {
                   min="0.01"
                   step="0.01"
                   value={valor}
-                  onChange={evento => setValor(evento.target.value)}
+                  onChange={evento =>
+                    setValor(evento.target.value)
+                  }
                   placeholder="Ex.: 45.90"
                   className="w-full rounded-xl border border-slate-200 p-4 outline-none focus:border-green-600"
                 />
               </div>
 
               {erro && (
-                <p role="alert" className="text-sm font-medium text-red-600">
+                <p
+                  role="alert"
+                  className="text-sm font-medium text-red-600"
+                >
                   {erro}
                 </p>
               )}
@@ -756,14 +876,23 @@ export default function Financeiro() {
           </div>
 
           <div className="flex flex-wrap gap-5 text-sm text-green-100">
-            <Link to="/colheitas">Minha Colheita</Link>
-            <Link to="/tarefas">O que fazer hoje?</Link>
-            <Link to="/vendas">Vender Colheita</Link>
+            <Link to="/colheitas">
+              Minha Colheita
+            </Link>
+
+            <Link to="/tarefas">
+              O que fazer hoje?
+            </Link>
+
+            <Link to="/vendas">
+              Vender Colheita
+            </Link>
           </div>
         </div>
 
         <div className="mx-auto mt-8 max-w-7xl border-t border-white/15 pt-6 text-sm text-green-200">
-          © 2026 ColheitaSmart. Feito para quem cultiva o futuro. 🌱
+          © 2026 ColheitaSmart. Feito para quem cultiva
+          o futuro. 🌱
         </div>
       </footer>
     </main>
