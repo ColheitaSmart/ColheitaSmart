@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom'
 import {
   ArrowRight,
   CalendarDays,
-  CircleAlert,
   Package,
   Plus,
   Search,

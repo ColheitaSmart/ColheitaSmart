@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import Home from './pages/Home'
@@ -8,12 +9,24 @@ import DetalhesColheita from './pages/DetalhesColheita'
 import Tarefas from './pages/Tarefas'
 import Vendas from './pages/Vendas'
 import Financeiro from './pages/Financeiro'
+import FAQ from './pages/FAQ'
 
 const paginas = [
-  { nome: 'Sobre', rota: '/sobre', descricao: 'Conheça o ColheitaSmart.' },
-  { nome: 'Integrantes', rota: '/integrantes', descricao: 'Conheça nossa equipe.' },
-  { nome: 'FAQ', rota: '/faq', descricao: 'Perguntas frequentes.' },
-  { nome: 'Contato', rota: '/contato', descricao: 'Entre em contato.' },
+  {
+    nome: 'Sobre',
+    rota: '/sobre',
+    descricao: 'Conheça o ColheitaSmart.',
+  },
+  {
+    nome: 'Integrantes',
+    rota: '/integrantes',
+    descricao: 'Conheça nossa equipe.',
+  },
+  {
+    nome: 'Contato',
+    rota: '/contato',
+    descricao: 'Entre em contato.',
+  },
 ]
 
 export default function App() {
@@ -21,6 +34,7 @@ export default function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-[#F6F8F2]">
         <Header />
+
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/colheitas" element={<MinhaColheita />} />
@@ -29,8 +43,19 @@ export default function App() {
           <Route path="/tarefas" element={<Tarefas />} />
           <Route path="/vendas" element={<Vendas />} />
           <Route path="/financeiro" element={<Financeiro />} />
+          <Route path="/faq" element={<FAQ />} />
+
           {paginas.map(pagina => (
-            <Route key={pagina.rota} path={pagina.rota} element={<Pagina titulo={pagina.nome} descricao={pagina.descricao} />} />
+            <Route
+              key={pagina.rota}
+              path={pagina.rota}
+              element={
+                <Pagina
+                  titulo={pagina.nome}
+                  descricao={pagina.descricao}
+                />
+              }
+            />
           ))}
         </Routes>
       </div>

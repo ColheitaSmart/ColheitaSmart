@@ -232,7 +232,7 @@ export default function Vendas() {
       0,
       arredondar(
         anuncio.quantidade -
-          quantidadeVendidaAnuncio(anuncio.id)
+        quantidadeVendidaAnuncio(anuncio.id)
       )
     )
   }
@@ -267,7 +267,7 @@ export default function Vendas() {
       0,
       arredondar(
         estoqueFisicoLote(lote) -
-          quantidadeReservadaLote(lote.id)
+        quantidadeReservadaLote(lote.id)
       )
     )
   }
@@ -478,7 +478,7 @@ export default function Vendas() {
 
     const restante = arredondar(
       quantidadeDisponivelAnuncio(anuncioSelecionado) -
-        qtd
+      qtd
     )
 
     if (restante <= 0) {
@@ -624,11 +624,10 @@ export default function Vendas() {
               key={item.id}
               type="button"
               onClick={() => setAba(item.id as Aba)}
-              className={`rounded-xl px-5 py-3 text-sm font-bold transition ${
-                aba === item.id
+              className={`rounded-xl px-5 py-3 text-sm font-bold transition ${aba === item.id
                   ? 'bg-[#073B2C] text-white'
                   : 'bg-white text-slate-600 hover:bg-green-50'
-              }`}
+                }`}
             >
               {item.nome}
             </button>
@@ -868,11 +867,10 @@ export default function Vendas() {
                         </span>
 
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-bold ${
-                            ativo
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${ativo
                               ? 'bg-green-100 text-green-800'
                               : 'bg-slate-100 text-slate-600'
-                          }`}
+                            }`}
                         >
                           {ativo ? 'Ativo' : 'Encerrado'}
                         </span>
