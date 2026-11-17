@@ -43,7 +43,18 @@ export default function Home() {
   return (
     <main className="overflow-hidden">
       {/* HERO */}
-      <section className="relative bg-[#073B2C] text-white">
+      <section className="relative isolate overflow-hidden bg-[#073B2C] text-white">
+        {/* Foto de fundo da plantação */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center"
+          style={{ backgroundImage: 'url(/images/plantacao.jpg)' }}
+        />
+        {/* Camada escura para facilitar a leitura */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 bg-[#03261B]/80"
+        />
         <div className="absolute -right-40 -top-40 h-96 w-96 rounded-full bg-lime-400/10 blur-3xl" />
         <div className="absolute -bottom-40 left-1/3 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl" />
 
