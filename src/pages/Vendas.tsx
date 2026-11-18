@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 
 type Lote = {
-  id: string
+  id: string | number
   produto: string
   emoji?: string
   quantidade: number
@@ -29,7 +29,7 @@ type Lote = {
 
 type Anuncio = {
   id: string
-  loteId?: string
+  loteId?: string | number
   produto: string
   quantidade: number
   preco: number
@@ -40,7 +40,7 @@ type Anuncio = {
 type Venda = {
   id: string
   anuncioId: string
-  loteId?: string
+  loteId?: string | number
   produto: string
   quantidade: number
   preco: number
@@ -149,69 +149,64 @@ export default function Vendas() {
 
   const [busca, setBusca] = useState('')
   const [erro, setErro] = useState('')
+  const [erroPersistencia, setErroPersistencia] = useState('')
 
+  // Lê os dados novamente ao voltar para a aba ou após mudanças em outra aba.
+  // A gravação é feita nas ações, evitando sobrescrever dados antigos ao montar.
   useEffect(() => {
-    function atualizarLotes() {
+    function atualizar() {
       setLotes(carregar<Lote>(CHAVE_LOTES))
+      setAnuncios(carregar<Anuncio>(CHAVE_ANUNCIOS))
+      setVendas(carregar<Venda>(CHAVE_VENDAS))
     }
-
-    function atualizarDados(evento: StorageEvent) {
-      if (evento.key === CHAVE_LOTES) {
-        atualizarLotes()
-      }
-
-      if (evento.key === CHAVE_ANUNCIOS) {
-        setAnuncios(carregar<Anuncio>(CHAVE_ANUNCIOS))
-      }
-
-      if (evento.key === CHAVE_VENDAS) {
-        setVendas(carregar<Venda>(CHAVE_VENDAS))
+    function aoMudarStorage(evento: StorageEvent) {
+      if (evento.key === null || [CHAVE_LOTES, CHAVE_ANUNCIOS, CHAVE_VENDAS].includes(evento.key)) {
+        atualizar()
       }
     }
-
-    window.addEventListener('focus', atualizarLotes)
-    window.addEventListener('storage', atualizarDados)
-
+    window.addEventListener('focus', atualizar)
+    window.addEventListener('pageshow', atualizar)
+    window.addEventListener('storage', aoMudarStorage)
     return () => {
-      window.removeEventListener('focus', atualizarLotes)
-      window.removeEventListener('storage', atualizarDados)
+      window.removeEventListener('focus', atualizar)
+      window.removeEventListener('pageshow', atualizar)
+      window.removeEventListener('storage', aoMudarStorage)
     }
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem(
-      CHAVE_ANUNCIOS,
-      JSON.stringify(anuncios)
-    )
-  }, [anuncios])
-
-  useEffect(() => {
-    localStorage.setItem(
-      CHAVE_VENDAS,
-      JSON.stringify(vendas)
-    )
-  }, [vendas])
+  function gravar<T>(chave: string, dados: T[]): boolean {
+    try {
+      localStorage.setItem(chave, JSON.stringify(dados))
+      setErroPersistencia('')
+      return true
+    } catch {
+      const mensagem = 'Não foi possível salvar. Verifique o armazenamento do navegador e tente novamente.'
+      setErro(mensagem)
+      setErroPersistencia(mensagem)
+      return false
+    }
+  }
 
   const lotesValidos = useMemo(() => {
     return lotes.filter(
       lote =>
-        typeof lote.id === 'string' &&
+        (typeof lote.id === 'string' || typeof lote.id === 'number') &&
         typeof lote.produto === 'string' &&
         numeroValido(lote.quantidade)
     )
   }, [lotes])
 
   const loteSelecionado = lotesValidos.find(
-    lote => lote.id === loteSelecionadoId
+    lote => String(lote.id) === loteSelecionadoId
   )
 
   const anuncioSelecionado = anuncios.find(
     anuncio => anuncio.id === modalVenda
   )
 
-  function vendasDoLote(loteId: string) {
+  function vendasDoLote(loteId: string | number) {
     return vendas
-      .filter(venda => venda.loteId === loteId)
+      .filter(venda => String(venda.loteId) === String(loteId))
       .reduce(
         (total, venda) => total + venda.quantidade,
         0
@@ -246,12 +241,12 @@ export default function Vendas() {
     )
   }
 
-  function quantidadeReservadaLote(loteId: string) {
+  function quantidadeReservadaLote(loteId: string | number) {
     return arredondar(
       anuncios
         .filter(
           anuncio =>
-            anuncio.loteId === loteId &&
+            String(anuncio.loteId) === String(loteId) &&
             anuncio.status === 'Ativo'
         )
         .reduce(
@@ -278,7 +273,7 @@ export default function Vendas() {
     }
 
     const lote = lotesValidos.find(
-      item => item.id === anuncio.loteId
+      item => String(item.id) === String(anuncio.loteId)
     )
 
     if (!lote) {
@@ -337,13 +332,11 @@ export default function Vendas() {
     const lotesAtualizados = carregar<Lote>(CHAVE_LOTES)
     setLotes(lotesAtualizados)
 
-    const primeiroLote = lotesAtualizados.find(
-      lote =>
-        numeroValido(lote.quantidade) &&
-        lote.quantidade > 0
+    const primeiroLote = lotesComEstoque.find(lote =>
+      lotesAtualizados.some(atual => atual.id === lote.id)
     )
 
-    setLoteSelecionadoId(primeiroLote?.id ?? '')
+    setLoteSelecionadoId(primeiroLote ? String(primeiroLote.id) : '')
     setQuantidade('')
     setPreco('')
     setErro('')
@@ -366,7 +359,7 @@ export default function Vendas() {
     evento.preventDefault()
 
     const lote = lotesValidos.find(
-      item => item.id === loteSelecionadoId
+      item => String(item.id) === loteSelecionadoId
     )
 
     const qtd = Number(quantidade)
@@ -414,10 +407,9 @@ export default function Vendas() {
       status: 'Ativo',
     }
 
-    setAnuncios(anteriores => [
-      novoAnuncio,
-      ...anteriores,
-    ])
+    const novosAnuncios = [novoAnuncio, ...anuncios]
+    if (!gravar(CHAVE_ANUNCIOS, novosAnuncios)) return
+    setAnuncios(novosAnuncios)
 
     setQuantidade('')
     setPreco('')
@@ -471,10 +463,9 @@ export default function Vendas() {
       data: dataAtual(),
     }
 
-    setVendas(anteriores => [
-      novaVenda,
-      ...anteriores,
-    ])
+    const novasVendas = [novaVenda, ...vendas]
+    if (!gravar(CHAVE_VENDAS, novasVendas)) return
+    setVendas(novasVendas)
 
     const restante = arredondar(
       quantidadeDisponivelAnuncio(anuncioSelecionado) -
@@ -482,13 +473,12 @@ export default function Vendas() {
     )
 
     if (restante <= 0) {
-      setAnuncios(anteriores =>
-        anteriores.map(anuncio =>
-          anuncio.id === anuncioSelecionado.id
-            ? { ...anuncio, status: 'Encerrado' }
-            : anuncio
-        )
+      const atualizados = anuncios.map(anuncio =>
+        anuncio.id === anuncioSelecionado.id
+          ? { ...anuncio, status: 'Encerrado' as const }
+          : anuncio
       )
+      if (gravar(CHAVE_ANUNCIOS, atualizados)) setAnuncios(atualizados)
     }
 
     fecharModalVenda()
@@ -496,37 +486,33 @@ export default function Vendas() {
   }
 
   function encerrarAnuncio(id: string) {
-    setAnuncios(anteriores =>
-      anteriores.map(anuncio =>
-        anuncio.id === id
-          ? { ...anuncio, status: 'Encerrado' }
-          : anuncio
-      )
+    const atualizados = anuncios.map(anuncio =>
+      anuncio.id === id
+        ? { ...anuncio, status: 'Encerrado' as const }
+        : anuncio
     )
+    if (gravar(CHAVE_ANUNCIOS, atualizados)) setAnuncios(atualizados)
   }
 
   function compartilhar(anuncio: Anuncio) {
     const disponivel = disponibilidadeVenda(anuncio)
 
-    if (disponivel <= 0) {
-      return
-    }
+    if (disponivel <= 0) return
 
+    // Escapes Unicode evitam problemas com a codificação do arquivo-fonte.
+    const icone = emojiProduto(anuncio.produto)
     const mensagem = [
-      '🌱 *COLHEITASMART — COLHEITA À VENDA*',
+      '\u{1F331} *COLHEITASMART - COLHEITA À VENDA*',
       '',
-      `🥬 Produto: ${anuncio.produto}`,
-      `📦 Quantidade disponível: ${peso(disponivel)} kg`,
-      `💰 Preço: ${moeda(anuncio.preco)}/kg`,
+      `${icone} *Produto:* ${anuncio.produto}`,
+      `\u{1F4E6} *Quantidade disponível:* ${peso(disponivel)} kg`,
+      `\u{1F4B0} *Preço:* ${moeda(anuncio.preco)}/kg`,
       '',
       'Entre em contato para negociar!',
     ].join('\n')
 
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(mensagem)}`,
-      '_blank',
-      'noopener,noreferrer'
-    )
+    const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const cartoes = [
@@ -582,6 +568,7 @@ export default function Vendas() {
       </section>
 
       <div className="mx-auto max-w-7xl px-6 py-10">
+        {erroPersistencia && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">{erroPersistencia}</p>}
         <div className="grid gap-5 md:grid-cols-3">
           {cartoes.map(item => {
             const Icone = item.icone
@@ -761,7 +748,7 @@ export default function Vendas() {
                             </p>
 
                             <p className="text-xs text-slate-500">
-                              Lote {lote.id.slice(0, 8)}
+                              Lote {String(lote.id).slice(0, 8)}
                             </p>
                           </div>
                         </div>
@@ -886,7 +873,7 @@ export default function Vendas() {
 
                       {anuncio.loteId && (
                         <p className="mt-1 text-xs text-slate-500">
-                          Lote {anuncio.loteId.slice(0, 8)}
+                          Lote {String(anuncio.loteId).slice(0, 8)}
                         </p>
                       )}
 
@@ -1033,7 +1020,7 @@ export default function Vendas() {
 
                         {venda.loteId && (
                           <p className="mt-1 text-xs text-slate-400">
-                            Lote {venda.loteId.slice(0, 8)}
+                            Lote {String(venda.loteId).slice(0, 8)}
                           </p>
                         )}
                       </div>
@@ -1140,10 +1127,10 @@ export default function Vendas() {
                     {lotesComEstoque.map(lote => (
                       <option
                         key={lote.id}
-                        value={lote.id}
+                        value={String(lote.id)}
                       >
                         {lote.produto} — Lote{' '}
-                        {lote.id.slice(0, 8)} —{' '}
+                        {String(lote.id).slice(0, 8)} —{' '}
                         {peso(estoqueLivreLote(lote))} kg
                       </option>
                     ))}

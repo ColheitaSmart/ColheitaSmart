@@ -1,3 +1,4 @@
+import { avaliarLoteLegado } from '../utils/avaliacaoLote'
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -13,6 +14,9 @@ import {
   Warehouse,
   ShoppingBasket,
   CheckCircle2,
+  ArrowUpRight,
+  Leaf,
+  Sparkles,
 } from 'lucide-react'
 
 type Lote = {
@@ -71,7 +75,7 @@ function lerDados(): Dados {
           typeof lote.id === 'number') &&
         Number.isFinite(Number(lote.quantidade)) &&
         Number(lote.quantidade) >= 0
-    ),
+    ).map(lote => avaliarLoteLegado(lote)),
     anuncios: carregar<Anuncio>(CHAVE_ANUNCIOS),
     vendas: carregar<Venda>(CHAVE_VENDAS),
   }
@@ -273,6 +277,13 @@ export default function MinhaColheita() {
       lote.status === 'Aguardando avaliação'
   ).length
 
+  const porProduto = Object.entries(lotes.reduce<Record<string, number>>((acc, lote) => {
+    const nome = lote.produto.trim() || 'Outro alimento'
+    acc[nome] = (acc[nome] || 0) + (estoque.get(String(lote.id))?.fisico || 0)
+    return acc
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const maiorProduto = Math.max(1, ...porProduto.map(([, valor]) => valor))
+
   const indicadores = [
     {
       titulo: 'Lotes cadastrados',
@@ -301,20 +312,23 @@ export default function MinhaColheita() {
   ]
 
   return (
-    <main className="min-h-screen bg-[#F6F8F2]">
-      <section className="bg-[#073B2C] px-6 py-12 text-white">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-6 md:flex-row md:items-center">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-bold text-lime-300">
+    <main className="min-h-screen min-w-0 bg-[#F5F7F1] text-[#123B2A]">
+      <section className="relative isolate overflow-hidden bg-[#08291D] px-4 py-12 text-white sm:px-6 sm:py-16">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-36 h-96 w-96 rounded-full bg-[#B8F34B]/15 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle at center, #D9F6A2 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-[-110px] left-[-80px] h-72 w-72 rounded-full border-[45px] border-[#B8F34B]/10" />
+        <div className="relative mx-auto flex max-w-7xl min-w-0 flex-col justify-between gap-6 md:flex-row md:items-center">
+          <div className="min-w-0">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#F5C76D]/35 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[.18em] text-[#F5C76D] backdrop-blur-md">
               <Sprout size={18} />
               SEU PAINEL
             </p>
 
-            <h1 className="mt-3 text-4xl font-extrabold">
-              Minha Colheita
+            <h1 className="mt-6 text-[clamp(2.5rem,6vw,4.8rem)] font-black leading-[1.03] tracking-[-.055em]">
+              Minha <span className="text-[#F5C76D]">Colheita.</span>
             </h1>
 
-            <p className="mt-3 text-green-100">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
               Organize seus lotes e acompanhe sua produção
               após a colheita.
             </p>
@@ -322,37 +336,45 @@ export default function MinhaColheita() {
 
           <Link
             to="/colheitas/nova"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#B8F34B] px-6 py-4 font-bold text-[#073B2C] hover:bg-lime-200"
+            className="group inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#F5C76D] px-7 py-4 text-center font-extrabold text-[#123B2A] shadow-[0_14px_38px_rgba(0,0,0,.2)] transition duration-300 hover:-translate-y-1 hover:bg-[#FFE3A0] sm:w-auto"
           >
             <Plus size={20} />
             Nova colheita
+              <ArrowUpRight size={19} className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-9 sm:px-6 sm:py-12">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.2em] text-[#49814C]"><Sparkles size={15} /> Visão geral</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-[#123B2A] sm:text-3xl">Sua produção em números</h2>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#D8E8D0] bg-white px-4 py-2 text-xs font-bold text-[#52735B]"><Leaf size={15} /> Acompanhamento pós-colheita</span>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {indicadores.map(item => {
             const Icone = item.icone
 
             return (
               <div
                 key={item.titulo}
-                className="rounded-2xl border border-green-100 bg-white p-6 shadow-sm"
+                className="group relative min-w-0 overflow-hidden rounded-[26px] border border-[#DEE8D9] bg-white p-5 shadow-[0_10px_35px_rgba(17,52,32,.05)] transition duration-300 hover:-translate-y-1 hover:border-[#B7D69D] hover:shadow-[0_18px_40px_rgba(17,52,32,.1)] sm:p-6"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium text-slate-600">
+                  <p className="text-sm font-semibold text-[#607467]">
                     {item.titulo}
                   </p>
 
                   <Icone
-                    className="shrink-0 text-green-700"
-                    size={23}
+                    className="shrink-0 rounded-xl bg-[#EAF5DD] p-2 text-[#22613D]"
+                    size={39}
                   />
                 </div>
 
-                <p className="mt-5 flex items-baseline gap-2">
-                  <strong className="text-3xl text-[#073B2C]">
+                <p className="mt-7 flex min-w-0 flex-wrap items-baseline gap-2">
+                  <strong className="min-w-0 break-all text-3xl font-black tracking-tight text-[#123B2A] sm:text-4xl">
                     {item.valor}
                   </strong>
 
@@ -366,7 +388,7 @@ export default function MinhaColheita() {
         </div>
 
         {lotes.length > 0 && (
-          <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-green-100 bg-[#E7F5D6] px-5 py-4 text-sm text-green-900">
+          <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-[#D7E6CA] bg-[#EDF5E6] px-5 py-4 text-sm text-[#295239]">
             <Scale size={19} />
 
             <span>
@@ -383,10 +405,23 @@ export default function MinhaColheita() {
           </div>
         )}
 
-        <section className="mt-10 rounded-3xl border border-green-100 bg-white p-6 shadow-sm md:p-8">
+        {porProduto.length > 0 && (
+          <section aria-label="Estoque por alimento" className="mt-10 min-w-0 rounded-[30px] border border-[#DFE9DA] bg-white p-5 shadow-[0_12px_40px_rgba(17,52,32,.05)] sm:p-7 md:p-9">
+            <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-2xl font-black tracking-tight text-[#103B2A]">Estoque por alimento</h2><span className="text-xs text-slate-500">Quantidade atual em kg</span></div>
+            <div className="mt-6 space-y-4">
+              {porProduto.map(([nome, valor]) => (
+                <div key={nome}>
+                  <div className="mb-2 flex justify-between gap-3 text-sm"><span className="min-w-0 break-words font-semibold text-[#244735]">{nome}</span><span className="shrink-0 font-bold tabular-nums text-[#244735]">{numero(valor)} kg</span></div>
+                  <div className="h-3 overflow-hidden rounded-full bg-[#E7F0E4]"><div className="h-full rounded-full bg-gradient-to-r from-[#327D49] to-[#B8F34B] transition-all duration-500" style={{width: `${Math.max(0, valor / maiorProduto * 100)}%`}} /></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        <section id="seus-lotes" className="mt-10 min-w-0 scroll-mt-28 rounded-[30px] border border-[#DFE9DA] bg-white p-5 shadow-[0_12px_40px_rgba(17,52,32,.05)] sm:p-7 md:p-9">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
             <div>
-              <h2 className="text-2xl font-extrabold text-[#073B2C]">
+              <h2 className="text-3xl font-black tracking-tight text-[#103B2A]">
                 Seus lotes
               </h2>
 
@@ -396,8 +431,8 @@ export default function MinhaColheita() {
             </div>
 
             {lotes.length > 0 && (
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3">
+              <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:flex-row">
+                <label className="flex w-full min-w-0 items-center gap-2 rounded-2xl border border-[#DAE5D6] bg-[#F8FAF6] px-3 py-3 transition focus-within:border-[#65A24B] focus-within:ring-2 focus-within:ring-[#B8F34B]/30 sm:w-auto sm:px-4">
                   <Search
                     size={18}
                     className="text-slate-400"
@@ -408,7 +443,7 @@ export default function MinhaColheita() {
                     onChange={e => setBusca(e.target.value)}
                     aria-label="Buscar alimento"
                     placeholder="Buscar alimento..."
-                    className="w-full bg-transparent text-sm outline-none"
+                    className="min-w-0 w-full bg-transparent text-sm outline-none"
                   />
                 </label>
 
@@ -416,7 +451,7 @@ export default function MinhaColheita() {
                   value={filtro}
                   onChange={e => setFiltro(e.target.value)}
                   aria-label="Filtrar situação"
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                  className="w-full min-w-0 rounded-2xl border border-[#DAE5D6] bg-[#F8FAF6] px-3 py-3 text-sm outline-none focus:border-[#65A24B] focus:ring-2 focus:ring-[#B8F34B]/30 sm:w-auto sm:px-4"
                 >
                   <option value="Todos">
                     Todos os lotes
@@ -439,7 +474,7 @@ export default function MinhaColheita() {
           </div>
 
           {lotes.length === 0 ? (
-            <div className="flex flex-col items-center px-4 py-16 text-center">
+            <div className="flex min-w-0 flex-col items-center px-1 py-12 text-center sm:px-4 sm:py-16">
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#E7F5D6]">
                 <Sprout
                   size={44}
@@ -459,7 +494,7 @@ export default function MinhaColheita() {
 
               <Link
                 to="/colheitas/nova"
-                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#073B2C] px-6 py-4 font-bold text-white hover:bg-green-800"
+                className="mt-7 inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl bg-[#073B2C] px-4 py-4 text-center text-sm font-bold text-white hover:bg-green-800 sm:px-6 sm:text-base"
               >
                 <Plus size={19} />
                 Cadastrar primeira colheita
@@ -504,16 +539,17 @@ export default function MinhaColheita() {
                 return (
                   <article
                     key={String(lote.id)}
-                    className="rounded-2xl border border-slate-200 p-5 transition hover:border-green-300 hover:shadow-md"
+                    className="group relative min-w-0 overflow-hidden rounded-[25px] border border-[#DDE8D8] bg-[#FCFDFB] p-5 shadow-[0_6px_20px_rgba(17,52,32,.035)] transition duration-300 hover:-translate-y-1 hover:border-[#A5C994] hover:shadow-[0_18px_40px_rgba(17,52,32,.1)] sm:p-6"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-green-50 text-3xl">
+                    <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#276B44] via-[#B8F34B] to-[#F5C76D]" />
+                    <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[#DDEACF] bg-gradient-to-br from-[#F2F9E9] to-[#DDEFCB] text-3xl shadow-inner">
                           {lote.emoji || '🌱'}
                         </span>
 
-                        <div>
-                          <h3 className="font-bold text-[#073B2C]">
+                        <div className="min-w-0">
+                          <h3 className="break-words text-lg font-extrabold text-[#103B2A]">
                             {lote.produto}
                           </h3>
 
@@ -534,7 +570,7 @@ export default function MinhaColheita() {
                     </div>
 
                     <div className="mt-6 space-y-3 text-sm">
-                      <div className="flex justify-between gap-3">
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
                         <span className="flex items-center gap-1 text-slate-500">
                           <Scale size={15} />
                           Quantidade inicial
@@ -545,7 +581,7 @@ export default function MinhaColheita() {
                         </strong>
                       </div>
 
-                      <div className="flex justify-between gap-3">
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
                         <span className="flex items-center gap-1 text-slate-500">
                           <CheckCircle2 size={15} />
                           Vendido
@@ -556,7 +592,7 @@ export default function MinhaColheita() {
                         </strong>
                       </div>
 
-                      <div className="flex justify-between gap-3 rounded-lg bg-green-50 px-3 py-2">
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-xl border border-[#DCECCF] bg-[#EDF7E5] px-3 py-3">
                         <span className="font-semibold text-green-800">
                           Estoque atual
                         </span>
@@ -567,7 +603,7 @@ export default function MinhaColheita() {
                       </div>
 
                       {saldo.reservado > 0 && (
-                        <div className="flex justify-between gap-3">
+                        <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
                           <span className="flex items-center gap-1 text-slate-500">
                             <ShoppingBasket size={15} />
                             Em anúncios
@@ -579,7 +615,7 @@ export default function MinhaColheita() {
                         </div>
                       )}
 
-                      <div className="flex justify-between gap-3">
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
                         <span className="text-slate-500">
                           Livre para anunciar
                         </span>
@@ -591,7 +627,7 @@ export default function MinhaColheita() {
 
                       <div className="border-t border-slate-100 pt-3" />
 
-                      <div className="flex justify-between gap-3">
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
                         <span className="flex items-center gap-1 text-slate-500">
                           <CalendarDays size={15} />
                           Colheita
@@ -600,13 +636,13 @@ export default function MinhaColheita() {
                         <span>{lote.data}</span>
                       </div>
 
-                      <div className="flex justify-between gap-3">
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
                         <span className="flex items-center gap-1 text-slate-500">
                           <Warehouse size={15} />
                           Armazenamento
                         </span>
 
-                        <span className="text-right">
+                        <span className="min-w-0 break-words text-right">
                           {lote.armazenamento}
                         </span>
                       </div>
@@ -614,7 +650,7 @@ export default function MinhaColheita() {
                       {lote.temperatura !== undefined &&
                         lote.temperatura !== null &&
                         lote.temperatura !== '' && (
-                          <div className="flex justify-between gap-3">
+                          <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
                             <span className="flex items-center gap-1 text-slate-500">
                               <Thermometer size={15} />
                               Temperatura
@@ -631,7 +667,7 @@ export default function MinhaColheita() {
                       to={`/colheitas/${encodeURIComponent(
                         String(lote.id)
                       )}`}
-                      className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-sm font-bold text-green-800 hover:text-green-600"
+                      className="mt-6 flex items-center justify-between border-t border-[#DFE9DA] pt-5 text-sm font-extrabold text-[#21633D] transition group-hover:text-[#418D3E]"
                     >
                       Ver detalhes
                       <ArrowRight size={17} />
@@ -643,7 +679,7 @@ export default function MinhaColheita() {
           )}
         </section>
 
-        <p className="mt-8 text-center text-xs text-slate-400">
+        <p className="mt-10 text-center text-xs text-[#7A8C7E]">
           ColheitaSmart — Sua colheita vale mais.
         </p>
       </div>
