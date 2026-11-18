@@ -497,25 +497,22 @@ export default function Vendas() {
   function compartilhar(anuncio: Anuncio) {
     const disponivel = disponibilidadeVenda(anuncio)
 
-    if (disponivel <= 0) {
-      return
-    }
+    if (disponivel <= 0) return
 
+    // Escapes Unicode evitam problemas com a codificação do arquivo-fonte.
+    const icone = emojiProduto(anuncio.produto)
     const mensagem = [
-      '🌱 *COLHEITASMART — COLHEITA À VENDA*',
+      '\u{1F331} *COLHEITASMART - COLHEITA À VENDA*',
       '',
-      `🥬 Produto: ${anuncio.produto}`,
-      `📦 Quantidade disponível: ${peso(disponivel)} kg`,
-      `💰 Preço: ${moeda(anuncio.preco)}/kg`,
+      `${icone} *Produto:* ${anuncio.produto}`,
+      `\u{1F4E6} *Quantidade disponível:* ${peso(disponivel)} kg`,
+      `\u{1F4B0} *Preço:* ${moeda(anuncio.preco)}/kg`,
       '',
       'Entre em contato para negociar!',
     ].join('\n')
 
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(mensagem)}`,
-      '_blank',
-      'noopener,noreferrer'
-    )
+    const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const cartoes = [

@@ -1,13 +1,15 @@
+import { avaliarLoteLegado } from '../utils/avaliacaoLote'
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, Clock3, PackageCheck, Search, Sprout } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 type Prioridade = 'Alta' | 'Média' | 'Baixa'
-type Lote = { id: string | number; produto: string; emoji?: string; quantidade: number; status?: string; data?: string; armazenamento?: string; temperatura?: number | string | null }
+type Lote = { id: string | number; produto: string; emoji?: string; quantidade: number; status?: string; avaliacaoTipo?: string; avaliacaoMotivo?: string; data?: string; armazenamento?: string; temperatura?: number | string | null }
 type Venda = { loteId?: string | number; quantidade: number }
 type Tarefa = { id: string; loteId: string; produto: string; emoji: string; titulo: string; descricao: string; prioridade: Prioridade }
 const CHAVE_LOTES = 'colheitasmart_lotes'
 const CHAVE_VENDAS = 'colheitasmart_vendas'
+const CHAVE_ANUNCIOS = 'colheitasmart_anuncios'
 const CHAVE_CONCLUIDAS = 'colheitasmart_tarefas_concluidas_v1'
 
 function lerArray<T>(chave: string): T[] {
@@ -27,7 +29,8 @@ function gerarTarefas(lotes: Lote[], vendas: Venda[]): Tarefa[] {
     const loteId = String(lote.id)
     const vendido = vendas.filter(v => v && v.loteId != null && String(v.loteId) === loteId).reduce((s, v) => s + Math.max(0, Number(v.quantidade) || 0), 0)
     if (Math.max(0, Number(lote.quantidade) - vendido) <= 0) continue
-    const status = lote.status || 'Aguardando avaliação'
+    const avaliado = avaliarLoteLegado(lote)
+    const status = avaliado.status || 'Aguardando avaliação'
     const prioridade: Prioridade = status === 'Alto risco' ? 'Alta' : status === 'Atenção' || status === 'Aguardando avaliação' ? 'Média' : 'Baixa'
     const titulo = status === 'Alto risco' ? 'Inspecionar este lote primeiro' : status === 'Atenção' ? 'Conferir as condições deste lote' : status === 'Bom' ? 'Acompanhar a conservação' : 'Verificar a situação deste lote'
     const descricao = status === 'Alto risco'
