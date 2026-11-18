@@ -105,12 +105,12 @@ export default function Home() {
       <section className="relative z-10 border-b border-white/10 bg-[#071e14]/45 px-4 py-14 text-white backdrop sm:px-6-blur-[3px] sm:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-            <div><span className="text-xs font-bold uppercase tracking-[.2em] text-[#F5C76D]">Culturas disponíveis</span><h2 className="mt-3 text-2xl font-extrabold sm:text-4xl">Explore cada cultura em uma nova dimensão.</h2><p className="mt-3 max-w-2xl text-white/70">Uma experiência interativa com os seis alimentos acompanhados pela plataforma. Abra apenas quando quiser explorar.</p></div>
-            <button type="button" aria-expanded={culturasAbertas} aria-controls="culturas-conteudo" onClick={() => setCulturasAbertas(!culturasAbertas)} className="inline-flex shrink-0 items-center gap-3 rounded-full border border-[#F5C76D]/70 px-6 py-3 font-bold text-[#F5D78F] transition hover:bg-white/10">{culturasAbertas ? 'Ocultar culturas' : 'Ver culturas disponíveis'} <ChevronDown size={19} className={`transition-transform ${culturasAbertas ? 'rotate-180' : ''}`}/></button>
+            <div><span className="text-xs font-bold uppercase tracking-[.2em] text-[#F5C76D]">Colheitas disponíveis</span><h2 className="mt-3 text-2xl font-extrabold sm:text-4xl">Explore cada colheita em uma nova dimensão.</h2><p className="mt-3 max-w-2xl text-white/70">Uma experiência interativa com os seis alimentos acompanhados pela plataforma. Abra apenas quando quiser explorar.</p></div>
+            <button type="button" aria-expanded={culturasAbertas} aria-controls="culturas-conteudo" onClick={() => setCulturasAbertas(!culturasAbertas)} className="inline-flex shrink-0 items-center gap-3 rounded-full border border-[#F5C76D]/70 px-6 py-3 font-bold text-[#F5D78F] transition hover:bg-white/10">{culturasAbertas ? 'Ocultar colheitas' : 'Ver colheitas disponíveis'} <ChevronDown size={19} className={`transition-transform ${culturasAbertas ? 'rotate-180' : ''}`}/></button>
           </div>
           {culturasAbertas && (
             <div id="culturas-conteudo" className="mt-10 rounded-[36px] border border-white/15 bg-gradient-to-b from-[#194b33]/70 to-[#061d13] px-4 py-10 shadow-[0_30px_100px_rgba(0,0,0,.3)] sm:px-8">
-              <p className="mb-5 text-center text-sm text-white/65">Selecione uma cultura no carrossel e gire seu modelo 3D logo abaixo</p>
+              <p className="mb-5 text-center text-sm text-white/65">Selecione uma colheita no carrossel e gire seu modelo 3D logo abaixo</p>
               <div className="relative mx-auto flex min-w-0 max-w-5xl items-center justify-center gap-1 sm:gap-5">
                 <button type="button" aria-label="Alimento anterior" onClick={() => moverCultura(-1)} className="z-20 shrink-0 rounded-full border border-white/25 bg-white/10 p-2 transition hover:bg-white/20 sm:p-3"><ChevronLeft size={23}/></button>
                 <div className="relative h-[310px] min-w-0 flex-1 overflow-hidden sm:h-[390px]" style={{ perspective: '1100px' }}>
@@ -134,7 +134,16 @@ export default function Home() {
                           pointerEvents: visivel ? 'auto' : 'none',
                         }}
                       >
-                        {cultura.imagem ? <img src={cultura.imagem} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#285C3C] to-[#0B2419] text-[100px] sm:text-[130px]" aria-hidden="true">{cultura.emoji}</div>}
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#285C3C] to-[#0B2419]" aria-hidden="true" />
+                         {cultura.imagem && (
+                           <img
+                             src={cultura.imagem}
+                             alt={cultura.nome}
+                             loading="lazy"
+                             className="absolute inset-0 h-full w-full object-cover"
+                             onError={evento => { evento.currentTarget.style.display = 'none' }}
+                           />
+                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-[#06190F] via-transparent to-transparent" />
                         <div className="absolute bottom-5 left-5 right-5"><span className="text-xs font-bold uppercase tracking-widest text-[#F5C76D]">{String(index + 1).padStart(2, '0')} / 06</span><h3 className="mt-1 text-2xl font-extrabold text-white">{cultura.nome}</h3></div>
                       </button>
@@ -149,14 +158,14 @@ export default function Home() {
                   <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/75">Arraste para girar ↔</span>
                 </div>
                 <Alimento3D alimento={culturas[culturaAtiva].nome} />
-                <p className="text-center text-xs text-white/60">Modelo 3D estilizado para apresentação da cultura. Não representa uma análise real do alimento.</p>
+                <p className="text-center text-xs text-white/60">Explore sua colheita em 3D. Arraste para girar e descubra cada detalhe.</p>
               </div>
               <div className="mx-auto mt-5 max-w-xl text-center" aria-live="polite">
                 <h3 className="text-xl font-bold">{culturas[culturaAtiva].emoji} {culturas[culturaAtiva].nome}</h3>
                 <p className="mt-2 text-sm text-white/70">{culturas[culturaAtiva].descricao}</p>
                 <div className="mt-5 flex justify-center gap-2">{culturas.map((cultura, index) => <button key={cultura.nome} type="button" aria-label={`Ir para ${cultura.nome}`} onClick={() => setCulturaAtiva(index)} className={`h-2.5 rounded-full transition-all ${index === culturaAtiva ? 'w-8 bg-[#F5C76D]' : 'w-2.5 bg-white/30 hover:bg-white/60'}`} />)}</div>
               </div>
-              <p className="mt-6 text-center text-xs text-white/50">Prévia ilustrativa das culturas disponíveis para cadastro.</p>
+              <p className="mt-6 text-center text-xs text-white/50">Prévia ilustrativa das colheitas disponíveis para cadastro.</p>
             </div>
           )}
         </div>

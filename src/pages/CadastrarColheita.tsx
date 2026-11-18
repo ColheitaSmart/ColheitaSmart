@@ -146,21 +146,21 @@ export default function CadastrarColheita() {
 
       if (!Number.isFinite(quantidade) || quantidade <= 0) {
         setErro(
-          `Informe uma quantidade válida para ${item.produto}.`
+          `Informe a quantidade de ${item.produto} em quilos. O valor deve ser maior que zero.`
         )
         return
       }
 
       if (!item.data || item.data > hojeLocal()) {
         setErro(
-          `Confira a data da colheita de ${item.produto}.`
+          `Confira a data da colheita de ${item.produto}. Não é possível informar uma data futura.`
         )
         return
       }
 
       if (!item.armazenamento) {
         setErro(
-          `Selecione o armazenamento de ${item.produto}.`
+          `Informe onde o alimento ${item.produto} foi guardado.`
         )
         return
       }
@@ -170,7 +170,7 @@ export default function CadastrarColheita() {
         !Number.isFinite(Number(item.temperatura))
       ) {
         setErro(
-          `Confira a temperatura de ${item.produto}.`
+          `Confira a temperatura de ${item.produto}. Informe apenas números.`
         )
         return
       }
@@ -210,7 +210,7 @@ export default function CadastrarColheita() {
       navigate('/colheitas', { replace: true })
     } catch {
       setErro(
-        'Não foi possível salvar os lotes neste navegador. Tente novamente.'
+        'Não foi possível salvar as colheitas. Tente novamente.'
       )
       setSalvando(false)
     }
@@ -230,7 +230,7 @@ export default function CadastrarColheita() {
 
           <div className="mt-8 flex items-center gap-2 text-sm font-bold text-lime-300">
             <Sprout size={18} />
-            SEU PAINEL
+            MINHA COLHEITA
           </div>
 
           <h1 className="mt-4 text-4xl font-extrabold">
@@ -238,8 +238,7 @@ export default function CadastrarColheita() {
           </h1>
 
           <p className="mt-3 max-w-2xl text-green-100">
-            Registre vários alimentos em uma única operação,
-            com os dados de cada lote.
+            Cadastre um ou mais alimentos e informe a quantidade, a data da colheita e o local onde foram guardados.
           </p>
         </div>
       </section>
@@ -253,11 +252,11 @@ export default function CadastrarColheita() {
 
             <div>
               <h2 className="text-2xl font-extrabold text-[#073B2C]">
-                Informações dos lotes
+                Informações da colheita
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Selecione todos os alimentos que deseja cadastrar.
+                Selecione os alimentos que deseja cadastrar.
               </p>
             </div>
           </div>
@@ -266,11 +265,11 @@ export default function CadastrarColheita() {
             <div>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-bold text-[#073B2C]">
-                  Quais alimentos você colheu?
+                  Selecione os alimentos colhidos
                 </h3>
 
                 <span className="rounded-full bg-green-50 px-3 py-1 text-sm font-bold text-green-800">
-                  {selecionados.length} selecionado(s)
+                  {selecionados.length} {selecionados.length === 1 ? 'selecionado' : 'selecionados'}
                 </span>
               </div>
 
@@ -321,7 +320,7 @@ export default function CadastrarColheita() {
                 <div className="mb-6 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-green-700">
-                      Lote {indice + 1}
+                      Alimento {indice + 1}
                     </p>
 
                     <h3 className="mt-1 text-xl font-extrabold text-[#073B2C]">
@@ -351,7 +350,7 @@ export default function CadastrarColheita() {
                       htmlFor={`q-${item.produto}`}
                       className="mb-2 block text-sm font-bold text-[#073B2C]"
                     >
-                      Quantidade (kg) *
+                      Quantidade colhida (kg) *
                     </label>
 
                     <input
@@ -403,7 +402,7 @@ export default function CadastrarColheita() {
                       htmlFor={`a-${item.produto}`}
                       className="mb-2 block text-sm font-bold text-[#073B2C]"
                     >
-                      Armazenamento *
+                      Onde o alimento foi guardado? *
                     </label>
 
                     <select
@@ -420,7 +419,7 @@ export default function CadastrarColheita() {
                       }
                     >
                       <option value="">
-                        Selecione uma opção
+                        Escolha um lugar
                       </option>
 
                       {armazenamentos.map(opcao => (
@@ -428,7 +427,7 @@ export default function CadastrarColheita() {
                           key={opcao}
                           value={opcao}
                         >
-                          {opcao}
+                          {opcao === 'Refrigeração' ? 'Geladeira ou refrigerador' : opcao === 'Câmara fria' ? 'Quarto ou sala refrigerada (câmara fria)' : opcao}
                         </option>
                       ))}
                     </select>
@@ -439,7 +438,7 @@ export default function CadastrarColheita() {
                       htmlFor={`t-${item.produto}`}
                       className="mb-2 block text-sm font-bold text-[#073B2C]"
                     >
-                      Temperatura (°C)
+                      Temperatura do local (°C)
                     </label>
 
                     <input
@@ -459,7 +458,7 @@ export default function CadastrarColheita() {
                     />
 
                     <p className="mt-1 text-xs text-slate-500">
-                      Opcional, caso saiba a temperatura.
+                      Se não souber a temperatura, deixe este campo em branco.
                     </p>
                   </div>
                 </div>
@@ -473,8 +472,7 @@ export default function CadastrarColheita() {
                   size={28}
                 />
 
-                Selecione um ou mais alimentos acima para
-                preencher seus lotes.
+                Selecione um ou mais alimentos acima para preencher as informações da colheita.
               </div>
             )}
 
@@ -486,13 +484,9 @@ export default function CadastrarColheita() {
                 />
 
                 <p>
-                  Ao cadastrar, o sistema faz uma{' '}
-                  <strong>triagem preliminar</strong> com
-                  regras ilustrativas de tempo e temperatura.
-                  Isso não é uma previsão de perdas por IA
-                  nem garante a qualidade do alimento.
-                  Sem dados suficientes, o lote permanece{' '}
-                  <strong>Aguardando avaliação</strong>.
+                  Após o cadastro, o sistema verifica as informações fornecidas e indica se a colheita precisa de atenção.{' '}
+                  <strong>Esta é apenas uma orientação inicial.</strong>{' '}
+                  Ela não garante a qualidade do alimento. Se faltarem informações, o sistema indicará que são necessários mais dados.
                 </p>
               </div>
             </div>
@@ -542,14 +536,14 @@ export default function CadastrarColheita() {
             </div>
 
             <p className="mt-7 text-xs font-bold uppercase tracking-widest text-lime-300">
-              Resumo do cadastro
+              Resumo da colheita
             </p>
 
             <h2 className="mt-3 text-3xl font-extrabold">
               {selecionados.length}{' '}
               {selecionados.length === 1
-                ? 'lote'
-                : 'lotes'}
+                ? 'alimento'
+                : 'alimentos'}
             </h2>
 
             <div className="mt-5 space-y-3">
@@ -578,7 +572,7 @@ export default function CadastrarColheita() {
                 ))
               ) : (
                 <p className="text-sm text-green-100">
-                  Escolha os alimentos para começar.
+                  Selecione os alimentos para começar.
                 </p>
               )}
             </div>
@@ -586,13 +580,11 @@ export default function CadastrarColheita() {
 
           <div className="rounded-3xl border border-green-100 bg-white p-7 shadow-sm">
             <h3 className="text-lg font-extrabold text-[#073B2C]">
-              Uma colheita, vários lotes
+              Acompanhamento dos alimentos
             </h3>
 
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              Cada alimento terá um registro próprio.
-              Assim você poderá acompanhar quantidades,
-              armazenamento e avaliações individualmente.
+              As informações de cada alimento serão guardadas separadamente. Assim, será possível acompanhar a quantidade disponível, o local onde foi guardado e os cuidados necessários.
             </p>
           </div>
         </aside>
