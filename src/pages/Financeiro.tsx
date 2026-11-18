@@ -124,13 +124,6 @@ export default function Financeiro() {
   >('todas')
 
   useEffect(() => {
-    localStorage.setItem(
-      CHAVE_DESPESAS,
-      JSON.stringify(despesas)
-    )
-  }, [despesas])
-
-  useEffect(() => {
     function atualizarDados() {
       setVendas(
         carregarDados<Venda>(CHAVE_VENDAS)
@@ -245,6 +238,17 @@ export default function Financeiro() {
     1
   )
 
+  function salvarDespesas(proximas: Despesa[]): boolean {
+    try {
+      localStorage.setItem(CHAVE_DESPESAS, JSON.stringify(proximas))
+      setDespesas(proximas)
+      return true
+    } catch {
+      setErro('Não foi possível salvar a despesa neste navegador. Verifique o armazenamento disponível.')
+      return false
+    }
+  }
+
   function cadastrarDespesa(
     evento: FormEvent<HTMLFormElement>
   ) {
@@ -260,8 +264,7 @@ export default function Financeiro() {
     if (
       !Number.isFinite(valorNumerico) ||
       valorNumerico <= 0 ||
-      Math.round(valorNumerico * 100) / 100 !==
-      valorNumerico
+      Math.abs(Math.round(valorNumerico * 100) / 100 - valorNumerico) > 0.0000001
     ) {
       setErro(
         'Informe um valor válido com até duas casas decimais.'
@@ -277,10 +280,8 @@ export default function Financeiro() {
       data: obterDataAtual(),
     }
 
-    setDespesas(anteriores => [
-      novaDespesa,
-      ...anteriores,
-    ])
+    const despesasAtuais = carregarDados<Despesa>(CHAVE_DESPESAS)
+    if (!salvarDespesas([novaDespesa, ...despesasAtuais])) return
 
     setDescricao('')
     setCategoria('Transporte')
@@ -296,9 +297,8 @@ export default function Financeiro() {
 
     if (!confirmado) return
 
-    setDespesas(anteriores =>
-      anteriores.filter(despesa => despesa.id !== id)
-    )
+    const despesasAtuais = carregarDados<Despesa>(CHAVE_DESPESAS)
+    salvarDespesas(despesasAtuais.filter(despesa => despesa.id !== id))
   }
 
   function abrirModal() {
@@ -365,6 +365,9 @@ export default function Financeiro() {
       </section>
 
       <div className="mx-auto max-w-7xl px-6 py-10">
+        {erro && !modalAberto && (
+          <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{erro}</p>
+        )}
         <section className="grid gap-5 md:grid-cols-3">
           {indicadores.map(indicador => {
             const Icone = indicador.icone
