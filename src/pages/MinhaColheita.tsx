@@ -13,6 +13,11 @@ import {
   Warehouse,
   ShoppingBasket,
   CheckCircle2,
+  AlertTriangle,
+  ArrowUpRight,
+  ClipboardList,
+  Wallet,
+  TrendingUp,
 } from 'lucide-react'
 
 type Lote = {
@@ -273,6 +278,15 @@ export default function MinhaColheita() {
       lote.status === 'Aguardando avaliação'
   ).length
 
+  const precisamAtencao = lotes.filter(lote => lote.status === 'Atenção' || lote.status === 'Alto risco').length
+  const disponivel = Array.from(estoque.values()).reduce((soma, item) => soma + item.livre, 0)
+  const porProduto = Object.entries(lotes.reduce<Record<string, number>>((acc, lote) => {
+    const nome = lote.produto.trim() || 'Outro alimento'
+    acc[nome] = (acc[nome] || 0) + (estoque.get(String(lote.id))?.fisico || 0)
+    return acc
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const maiorProduto = Math.max(1, ...porProduto.map(([, valor]) => valor))
+
   const indicadores = [
     {
       titulo: 'Lotes cadastrados',
@@ -301,9 +315,10 @@ export default function MinhaColheita() {
   ]
 
   return (
-    <main className="min-h-screen bg-[#F6F8F2]">
-      <section className="bg-[#073B2C] px-6 py-12 text-white">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-6 md:flex-row md:items-center">
+    <main className="min-h-screen bg-[#F3F6F1]">
+      <section className="relative overflow-hidden bg-[#082E21] px-6 py-12 text-white">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-36 h-96 w-96 rounded-full bg-[#B8F34B]/10 blur-3xl" />
+        <div className="relative mx-auto flex max-w-7xl flex-col justify-between gap-6 md:flex-row md:items-center">
           <div>
             <p className="flex items-center gap-2 text-sm font-bold text-lime-300">
               <Sprout size={18} />
@@ -383,7 +398,20 @@ export default function MinhaColheita() {
           </div>
         )}
 
-        <section className="mt-10 rounded-3xl border border-green-100 bg-white p-6 shadow-sm md:p-8">
+        {porProduto.length > 0 && (
+          <section aria-label="Estoque por alimento" className="mt-9 rounded-[28px] border border-[#DFE9DA] bg-white p-6 shadow-sm md:p-8">
+            <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-xl font-extrabold text-[#103B2A]">Estoque por alimento</h2><span className="text-xs text-slate-500">Quantidade atual em kg</span></div>
+            <div className="mt-6 space-y-4">
+              {porProduto.map(([nome, valor]) => (
+                <div key={nome}>
+                  <div className="mb-2 flex justify-between gap-3 text-sm"><span className="font-semibold text-[#244735]">{nome}</span><span className="font-bold tabular-nums text-[#244735]">{numero(valor)} kg</span></div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-[#E7F0E4]"><div className="h-full rounded-full bg-[#77B65A] transition-all" style={{width: `${Math.max(0, valor / maiorProduto * 100)}%`}} /></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        <section id="seus-lotes" className="mt-10 scroll-mt-28 rounded-3xl border border-green-100 bg-white p-6 shadow-sm md:p-8">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
             <div>
               <h2 className="text-2xl font-extrabold text-[#073B2C]">

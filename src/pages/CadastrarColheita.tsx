@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Info, Sprout, Tras
 
 type Produto = 'Tomate' | 'Banana' | 'Alface' | 'Morango' | 'Manga' | 'Batata'
 type Formulario = { produto: Produto; quantidade: string; data: string; armazenamento: string; temperatura: string }
-type Lote = { id: string; produto: Produto; emoji: string; quantidade: number; data: string; armazenamento: string; temperatura: number | null; status: 'Aguardando avaliação' }
+type Lote = { id: string; produto: Produto; emoji: string; quantidade: number; data: string; armazenamento: string; temperatura: number | null; status: 'Bom' | 'Atenção' | 'Alto risco' | 'Aguardando avaliação'; avaliacaoTipo?: 'regras_preliminares'; avaliacaoMotivo?: string }
 
 const CHAVE = 'colheitasmart_lotes'
 const produtos: { nome: Produto; emoji: string }[] = [
@@ -17,6 +17,32 @@ function hojeLocal() {
   const hoje = new Date()
   return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
 }
+// Triagem demonstrativa: limites ilustrativos, não substitui análise de risco por IA.
+// Evita declarar "Bom" quando faltam dados importantes.
+function avaliarLote(item: Formulario): Pick<Lote, 'status' | 'avaliacaoTipo' | 'avaliacaoMotivo'> {
+  const limiteDias: Record<Produto, number> = {
+    Tomate: 7, Banana: 7, Alface: 3, Morango: 3, Manga: 7, Batata: 14,
+  }
+  const [ano, mes, dia] = item.data.split('-').map(Number)
+  const colheitaUTC = Date.UTC(ano, mes - 1, dia)
+  const hoje = new Date()
+  const hojeUTC = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
+  const dias = Math.floor((hojeUTC - colheitaUTC) / 86400000)
+  const temperatura = item.temperatura.trim() === '' ? null : Number(item.temperatura)
+  const base = { avaliacaoTipo: 'regras_preliminares' as const }
+
+  if (dias > limiteDias[item.produto]) {
+    return { ...base, status: 'Atenção', avaliacaoMotivo: 'Tempo desde a colheita acima do limite ilustrativo de triagem.' }
+  }
+  if (temperatura !== null && (temperatura < 0 || temperatura > 30)) {
+    return { ...base, status: 'Atenção', avaliacaoMotivo: 'Temperatura informada fora da faixa geral de triagem.' }
+  }
+  if (temperatura === null || item.armazenamento === 'Outro') {
+    return { ...base, status: 'Aguardando avaliação', avaliacaoMotivo: 'Dados insuficientes para a triagem inicial.' }
+  }
+  return { ...base, status: 'Bom', avaliacaoMotivo: 'Nenhum alerta identificado pelas regras preliminares; não é garantia de conservação.' }
+}
+
 function lerLotes(): Lote[] {
   try {
     const salvo: unknown = JSON.parse(localStorage.getItem(CHAVE) || '[]')
@@ -60,7 +86,7 @@ export default function CadastrarColheita() {
         quantidade: Number(item.quantidade), data: `${dia}/${mes}/${ano}`,
         armazenamento: item.armazenamento,
         temperatura: item.temperatura.trim() === '' ? null : Number(item.temperatura),
-        status: 'Aguardando avaliação',
+        ...avaliarLote(item),
       }
     })
     try {
@@ -107,7 +133,7 @@ export default function CadastrarColheita() {
               </div>
             </div>)}
             {selecionados.length === 0 && <div className="rounded-2xl border border-dashed border-green-200 bg-green-50/50 px-5 py-9 text-center text-slate-600"><Sprout className="mx-auto mb-3 text-green-700" size={28} />Selecione um ou mais alimentos acima para preencher seus lotes.</div>}
-            <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900"><div className="flex gap-2"><Info size={20} className="shrink-0" /><p>A condição dos alimentos será avaliada pelo sistema. Até a integração da análise de risco, os lotes ficarão com a situação <strong>Aguardando avaliação</strong>.</p></div></div>
+            <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900"><div className="flex gap-2"><Info size={20} className="shrink-0" /><p>Ao cadastrar, o sistema faz uma <strong>triagem preliminar</strong> com regras ilustrativas de tempo e temperatura. Isso não é uma previsão de perdas por IA nem garante a qualidade do alimento. Sem dados suficientes, o lote permanece <strong>Aguardando avaliação</strong>.</p></div></div>
             {erro && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{erro}</p>}
             <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-7 sm:flex-row sm:justify-end"><Link to="/colheitas" className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-6 py-4 font-bold text-slate-600 hover:bg-slate-50">Cancelar</Link><button type="submit" disabled={salvando || !selecionados.length} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#073B2C] px-7 py-4 font-bold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50">{salvando ? 'Salvando...' : `Cadastrar ${selecionados.length} ${selecionados.length === 1 ? 'colheita' : 'colheitas'}`}<ArrowRight size={19} /></button></div>
           </form>
