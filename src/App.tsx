@@ -1,33 +1,20 @@
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+
 import Header from './components/Header'
+
 import Home from './pages/Home'
-import Pagina from './pages/Pagina'
+import Sobre from './pages/Sobre'
+import Integrantes from './pages/Integrantes'
+import Contato from './pages/Contato'
+import FAQ from './pages/FAQ'
+
 import MinhaColheita from './pages/MinhaColheita'
 import CadastrarColheita from './pages/CadastrarColheita'
 import DetalhesColheita from './pages/DetalhesColheita'
 import Tarefas from './pages/Tarefas'
 import Vendas from './pages/Vendas'
 import Financeiro from './pages/Financeiro'
-import FAQ from './pages/FAQ'
-
-const paginas = [
-  {
-    nome: 'Sobre',
-    rota: '/sobre',
-    descricao: 'Conheça o ColheitaSmart.',
-  },
-  {
-    nome: 'Integrantes',
-    rota: '/integrantes',
-    descricao: 'Conheça nossa equipe.',
-  },
-  {
-    nome: 'Contato',
-    rota: '/contato',
-    descricao: 'Entre em contato.',
-  },
-]
 
 export default function App() {
   return (
@@ -36,27 +23,28 @@ export default function App() {
         <Header />
 
         <Routes>
+          {/* Páginas institucionais */}
           <Route path="/" element={<Home />} />
+          <Route path="/sobre" element={<Sobre />} />
+          <Route path="/integrantes" element={<Integrantes />} />
+          <Route path="/contato" element={<Contato />} />
+          <Route path="/faq" element={<FAQ />} />
+
+          {/* Área de colheitas */}
           <Route path="/colheitas" element={<MinhaColheita />} />
-          <Route path="/colheitas/nova" element={<CadastrarColheita />} />
-          <Route path="/colheitas/:id" element={<DetalhesColheita />} />
+          <Route
+            path="/colheitas/nova"
+            element={<CadastrarColheita />}
+          />
+          <Route
+            path="/colheitas/:id"
+            element={<DetalhesColheita />}
+          />
+
+          {/* Funcionalidades da plataforma */}
           <Route path="/tarefas" element={<Tarefas />} />
           <Route path="/vendas" element={<Vendas />} />
           <Route path="/financeiro" element={<Financeiro />} />
-          <Route path="/faq" element={<FAQ />} />
-
-          {paginas.map(pagina => (
-            <Route
-              key={pagina.rota}
-              path={pagina.rota}
-              element={
-                <Pagina
-                  titulo={pagina.nome}
-                  descricao={pagina.descricao}
-                />
-              }
-            />
-          ))}
         </Routes>
       </div>
     </BrowserRouter>
