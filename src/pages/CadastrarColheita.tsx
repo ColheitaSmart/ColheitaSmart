@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import { criarCultura, criarLote, listarCulturas, nomeNormalizado } from '../services/apiColheitas'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -25,19 +26,11 @@ type Formulario = {
   data: string
   armazenamento: string
   temperatura: string
+  preco: string
 }
 
-// IDs provisórios inferidos da ordem das culturas: validar com o back-end.
-const API_LOTES = 'https://colheitasmart-api.onrender.com/lotes'
+// Agricultor de demonstração existente no Oracle; login será integrado separadamente.
 const ID_AGRICULTOR_DEMO = 1
-const CULTURA_ID: Record<Produto, number> = {
-  Tomate: 1,
-  Banana: 2,
-  Alface: 3,
-  Morango: 4,
-  Manga: 5,
-  Batata: 6,
-}
 
 const produtos: { nome: Produto; emoji: string }[] = [
   { nome: 'Tomate', emoji: '🍅' },
@@ -91,6 +84,7 @@ export default function CadastrarColheita() {
               data: hojeLocal(),
               armazenamento: '',
               temperatura: '',
+              preco: '0',
             },
           ]
     )
@@ -133,6 +127,10 @@ export default function CadastrarColheita() {
         setErro(`Informe onde o alimento ${item.produto} foi guardado.`)
         return
       }
+      if (!Number.isFinite(Number(item.preco)) || Number(item.preco) < 0) {
+        setErro(`Informe um preço por kg válido para ${item.produto}.`)
+        return
+      }
       if (item.temperatura.trim() && !Number.isFinite(Number(item.temperatura))) {
         setErro(`Confira a temperatura de ${item.produto}. Informe apenas números.`)
         return
@@ -144,31 +142,42 @@ export default function CadastrarColheita() {
     let cadastrados = 0
 
     try {
+      const culturas = await listarCulturas()
       // Cada alimento selecionado corresponde a um POST independente.
       for (const item of selecionados) {
         const quantidade = Number(item.quantidade)
+        let cultura = culturas.find(c => nomeNormalizado(c.nmCultura) === nomeNormalizado(item.produto))
+        if (!cultura) {
+          const categoria = ['Banana', 'Morango', 'Manga'].includes(item.produto) ? 'Fruta' : item.produto === 'Batata' ? 'Tuberculo' : 'Hortalica'
+          cultura = await criarCultura(item.produto, categoria)
+          culturas.push(cultura)
+        }
         const corpo = {
           cdAgricultor: ID_AGRICULTOR_DEMO,
-          cdCultura: CULTURA_ID[item.produto],
+          cdCultura: cultura.cdCultura,
           qtPesoInicialKg: quantidade,
           qtPesoDisponivelKg: quantidade,
           dtColheita: item.data,
           dsArmazenamento: item.armazenamento,
-          // O formulário não possui preço. Confirme com a equipe Java
-          // se vlPrecoKg e dsStatus são opcionais no POST.
+          vlPrecoKg: Number(item.preco),
+          dsStatus: 'DISPONIVEL' as const,
         }
 
-        const resposta = await fetch(API_LOTES, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(corpo),
-        })
-
-        if (!resposta.ok) {
-          const detalhe = await resposta.text().catch(() => '')
-          throw new Error(`API retornou HTTP ${resposta.status}${detalhe ? `: ${detalhe.slice(0, 250)}` : ''}`)
-        }
+        const salvo = await criarLote(corpo)
         cadastrados++
+        // Cache complementar para detalhes/temperatura; o ID vem do Oracle.
+        try {
+          const anterior = JSON.parse(localStorage.getItem('colheitasmart_lotes') || '[]')
+          const cache = Array.isArray(anterior) ? anterior : []
+          localStorage.setItem('colheitasmart_lotes', JSON.stringify([
+            ...cache.filter(item => String(item.id) !== String(salvo.cdLote)),
+            { id: salvo.cdLote, produto: cultura.nmCultura, quantidade: salvo.qtPesoInicialKg,
+              quantidadeDisponivel: salvo.qtPesoDisponivelKg, data: salvo.dtColheita.split('-').reverse().join('/'),
+              armazenamento: salvo.dsArmazenamento, temperatura: item.temperatura || null },
+          ]))
+        } catch { /* A persistência principal já foi confirmada pela API. */ }
+        // Evita reenviar lotes já confirmados se outro alimento falhar.
+        setSelecionados(atuais => atuais.filter(atual => atual.produto !== item.produto))
       }
 
       // A página /colheitas também precisa usar GET /lotes.
@@ -396,6 +405,15 @@ export default function CadastrarColheita() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor={`p-${item.produto}`} className="mb-2 block text-sm font-bold text-[#073B2C]">
+                      Preço de referência por kg (R$)
+                    </label>
+                    <input id={`p-${item.produto}`} className={campo} type="number" min="0" step="0.01"
+                      value={item.preco} required onChange={e => atualizar(item.produto, 'preco', e.target.value)} />
+                    <p className="mt-1 text-xs text-slate-500">Use zero enquanto o preço não estiver definido.</p>
                   </div>
 
                   <div>
