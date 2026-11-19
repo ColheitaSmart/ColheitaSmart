@@ -4,12 +4,11 @@ import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardList, Clock3, Package
 import { Link } from 'react-router-dom'
 
 type Prioridade = 'Alta' | 'Média' | 'Baixa'
-type Lote = { id: string | number; produto: string; emoji?: string; quantidade: number; status?: string; avaliacaoTipo?: string; avaliacaoMotivo?: string; data?: string; armazenamento?: string; temperatura?: number | string | null }
+type Lote = { id: string | number; produto: string; emoji?: string; quantidade: number; status?: string; avaliacaoTipo?: string; avaliacaoMotivo?: string; data: string; armazenamento?: string; temperatura?: number | string | null }
 type Venda = { loteId?: string | number; quantidade: number }
 type Tarefa = { id: string; loteId: string; produto: string; emoji: string; titulo: string; descricao: string; prioridade: Prioridade }
 const CHAVE_LOTES = 'colheitasmart_lotes'
 const CHAVE_VENDAS = 'colheitasmart_vendas'
-const CHAVE_ANUNCIOS = 'colheitasmart_anuncios'
 const CHAVE_CONCLUIDAS = 'colheitasmart_tarefas_concluidas_v1'
 
 function lerArray<T>(chave: string): T[] {
@@ -21,16 +20,43 @@ function dataLocal() {
 }
 function lerConcluidas(): string[] { return lerArray<string>(CHAVE_CONCLUIDAS).filter(x => typeof x === 'string') }
 function carregar() {
-  return { lotes: lerArray<Lote>(CHAVE_LOTES).filter(l => l && (typeof l.id === 'string' || typeof l.id === 'number') && typeof l.produto === 'string' && Number.isFinite(Number(l.quantidade))), vendas: lerArray<Venda>(CHAVE_VENDAS) }
+  return { lotes: lerArray<Lote>(CHAVE_LOTES).filter(l => l && (typeof l.id === 'string' || typeof l.id === 'number') && typeof l.produto === 'string' && Number.isFinite(Number(l.quantidade))).map(l => ({ ...l, data: typeof l.data === 'string' ? l.data : '' })), vendas: lerArray<Venda>(CHAVE_VENDAS) }
 }
 function gerarTarefas(lotes: Lote[], vendas: Venda[]): Tarefa[] {
   const tarefas: Tarefa[] = []
-  for (const lote of lotes) {
-    const loteId = String(lote.id)
-    const vendido = vendas.filter(v => v && v.loteId != null && String(v.loteId) === loteId).reduce((s, v) => s + Math.max(0, Number(v.quantidade) || 0), 0)
-    if (Math.max(0, Number(lote.quantidade) - vendido) <= 0) continue
-    const avaliado = avaliarLoteLegado(lote)
-    const status = avaliado.status || 'Aguardando avaliação'
+  
+for (const lote of lotes) {
+  const loteId = String(lote.id)
+
+  const vendido = vendas
+    .filter(
+      (v) =>
+        v &&
+        v.loteId != null &&
+        String(v.loteId) === loteId
+    )
+    .reduce(
+      (s, v) => s + Math.max(0, Number(v.quantidade) || 0),
+      0
+    )
+
+  if (Math.max(0, Number(lote.quantidade) - vendido) <= 0) {
+    continue
+  }
+
+  
+const avaliado = avaliarLoteLegado({
+  ...lote,
+  data: lote.data ?? '',
+  armazenamento: lote.armazenamento ?? '',
+  temperatura: lote.temperatura == null
+    ? undefined
+    : Number(lote.temperatura),
+})
+
+
+  const status = avaliado.status || 'Aguardando avaliação'
+
     const prioridade: Prioridade = status === 'Alto risco' ? 'Alta' : status === 'Atenção' || status === 'Aguardando avaliação' ? 'Média' : 'Baixa'
     const titulo = status === 'Alto risco' ? 'Inspecionar este lote primeiro' : status === 'Atenção' ? 'Conferir as condições deste lote' : status === 'Bom' ? 'Acompanhar a conservação' : 'Verificar a situação deste lote'
     const descricao = status === 'Alto risco'
