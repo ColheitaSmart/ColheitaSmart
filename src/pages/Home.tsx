@@ -4,6 +4,7 @@ import Alimento3D from '../components/Alimento3D'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
+  ArrowUpRight,
   Sprout,
   Package,
   TrendingUp,
@@ -18,7 +19,6 @@ import {
   BarChart3,
   Sparkles,
   MoveUpRight,
-  ArrowUpRight,
 } from 'lucide-react'
 
 const recursos = [
