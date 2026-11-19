@@ -22,9 +22,9 @@ function FotoIntegrante({ integrante }: { integrante: Integrante }) {
   const [falhou, setFalhou] = useState(false)
   const iniciais = integrante.nome.split(' ').filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase()
   return (
-    <div className="mx-auto flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#6D947B] bg-[#244535] sm:h-40 sm:w-40">
+    <div className="mx-auto flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#6D947B] bg-[#244535] shadow-lg sm:h-40 sm:w-40">
       {falhou ? (
-        <span className="text-4xl font-semibold text-[#D6E8D6]" aria-label={`Foto indisponível: ${integrante.nome}`}>{iniciais}</span>
+        <span className="text-4xl font-semibold text-[#D6E8D6]" aria-hidden="true">{iniciais}</span>
       ) : (
         <img src={integrante.foto} alt={`Foto de ${integrante.nome}`} loading="lazy" onError={() => setFalhou(true)} className="h-full w-full object-cover object-center" />
       )}
@@ -45,7 +45,7 @@ export default function Integrantes() {
 
         <section aria-labelledby="titulo-equipe" className="flex flex-wrap justify-center gap-6 lg:gap-7">
           {integrantes.map(integrante => (
-            <article key={integrante.rm} className="flex w-full max-w-[350px] flex-col items-center rounded-[24px] border border-[#345847] bg-[#142E24] px-6 pb-9 pt-10 text-center shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-1 sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-19px)]">
+            <article key={integrante.rm} aria-label={`Perfil de ${integrante.nome}`} className="flex w-full max-w-[350px] flex-col items-center rounded-[24px] border border-[#345847] bg-[#142E24] px-6 pb-9 pt-10 text-center shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-1 sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-19px)]">
               <FotoIntegrante integrante={integrante} />
               <h2 className="mt-7 flex min-h-[3.5rem] items-center justify-center text-xl font-semibold leading-7 text-[#C3E7BD]">{integrante.nome}</h2>
               <p className="mt-2 text-sm text-[#D5E2D8]">RM {integrante.rm}</p>
