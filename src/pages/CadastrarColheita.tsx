@@ -10,10 +10,6 @@ import {
   Sprout,
   Trash2,
 } from 'lucide-react'
-import {
-  avaliarLote,
-  type StatusLote,
-} from '../utils/avaliacaoLote'
 
 type Produto =
   | 'Tomate'
@@ -31,20 +27,17 @@ type Formulario = {
   temperatura: string
 }
 
-type Lote = {
-  id: string
-  produto: Produto
-  emoji: string
-  quantidade: number
-  data: string
-  armazenamento: string
-  temperatura: number | null
-  status: StatusLote
-  avaliacaoTipo?: 'regras_preliminares'
-  avaliacaoMotivo?: string
+// IDs provisórios inferidos da ordem das culturas: validar com o back-end.
+const API_LOTES = 'https://colheitasmart-api.onrender.com/lotes'
+const ID_AGRICULTOR_DEMO = 1
+const CULTURA_ID: Record<Produto, number> = {
+  Tomate: 1,
+  Banana: 2,
+  Alface: 3,
+  Morango: 4,
+  Manga: 5,
+  Batata: 6,
 }
-
-const CHAVE = 'colheitasmart_lotes'
 
 const produtos: { nome: Produto; emoji: string }[] = [
   { nome: 'Tomate', emoji: '🍅' },
@@ -72,20 +65,6 @@ function hojeLocal() {
   ).padStart(2, '0')}-${String(
     hoje.getDate()
   ).padStart(2, '0')}`
-}
-
-function lerLotes(): Lote[] {
-  try {
-    const salvo: unknown = JSON.parse(
-      localStorage.getItem(CHAVE) || '[]'
-    )
-
-    return Array.isArray(salvo)
-      ? (salvo as Lote[])
-      : []
-  } catch {
-    return []
-  }
 }
 
 export default function CadastrarColheita() {
@@ -131,9 +110,8 @@ export default function CadastrarColheita() {
     )
   }
 
-  function salvar(evento: React.FormEvent<HTMLFormElement>) {
+  async function salvar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-
     if (salvando) return
 
     if (!selecionados.length) {
@@ -143,75 +121,62 @@ export default function CadastrarColheita() {
 
     for (const item of selecionados) {
       const quantidade = Number(item.quantidade)
-
       if (!Number.isFinite(quantidade) || quantidade <= 0) {
-        setErro(
-          `Informe a quantidade de ${item.produto} em quilos. O valor deve ser maior que zero.`
-        )
+        setErro(`Informe a quantidade de ${item.produto} em quilos. O valor deve ser maior que zero.`)
         return
       }
-
       if (!item.data || item.data > hojeLocal()) {
-        setErro(
-          `Confira a data da colheita de ${item.produto}. Não é possível informar uma data futura.`
-        )
+        setErro(`Confira a data da colheita de ${item.produto}. Não é possível informar uma data futura.`)
         return
       }
-
       if (!item.armazenamento) {
-        setErro(
-          `Informe onde o alimento ${item.produto} foi guardado.`
-        )
+        setErro(`Informe onde o alimento ${item.produto} foi guardado.`)
         return
       }
-
-      if (
-        item.temperatura.trim() &&
-        !Number.isFinite(Number(item.temperatura))
-      ) {
-        setErro(
-          `Confira a temperatura de ${item.produto}. Informe apenas números.`
-        )
+      if (item.temperatura.trim() && !Number.isFinite(Number(item.temperatura))) {
+        setErro(`Confira a temperatura de ${item.produto}. Informe apenas números.`)
         return
       }
     }
 
     setSalvando(true)
     setErro('')
-
-    const novos: Lote[] = selecionados.map(item => {
-      const [ano, mes, dia] = item.data.split('-')
-
-      return {
-        id: crypto.randomUUID(),
-        produto: item.produto,
-        emoji: produtos.find(
-          produto => produto.nome === item.produto
-        )!.emoji,
-        quantidade: Number(item.quantidade),
-        data: `${dia}/${mes}/${ano}`,
-        armazenamento: item.armazenamento,
-        temperatura:
-          item.temperatura.trim() === ''
-            ? null
-            : Number(item.temperatura),
-
-        // Avaliação compartilhada com as outras páginas.
-        ...avaliarLote(item),
-      }
-    })
+    let cadastrados = 0
 
     try {
-      localStorage.setItem(
-        CHAVE,
-        JSON.stringify([...novos, ...lerLotes()])
-      )
+      // Cada alimento selecionado corresponde a um POST independente.
+      for (const item of selecionados) {
+        const quantidade = Number(item.quantidade)
+        const corpo = {
+          cdAgricultor: ID_AGRICULTOR_DEMO,
+          cdCultura: CULTURA_ID[item.produto],
+          qtPesoInicialKg: quantidade,
+          qtPesoDisponivelKg: quantidade,
+          dtColheita: item.data,
+          dsArmazenamento: item.armazenamento,
+          // O formulário não possui preço. Confirme com a equipe Java
+          // se vlPrecoKg e dsStatus são opcionais no POST.
+        }
 
+        const resposta = await fetch(API_LOTES, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(corpo),
+        })
+
+        if (!resposta.ok) {
+          const detalhe = await resposta.text().catch(() => '')
+          throw new Error(`API retornou HTTP ${resposta.status}${detalhe ? `: ${detalhe.slice(0, 250)}` : ''}`)
+        }
+        cadastrados++
+      }
+
+      // A página /colheitas também precisa usar GET /lotes.
       navigate('/colheitas', { replace: true })
-    } catch {
-      setErro(
-        'Não foi possível salvar as colheitas. Tente novamente.'
-      )
+    } catch (falha) {
+      const mensagem = falha instanceof Error ? falha.message : 'Erro desconhecido'
+      setErro(`Não foi possível concluir o cadastro na API Java. ${cadastrados} de ${selecionados.length} lote(s) foram enviados. ${mensagem}`)
+    } finally {
       setSalvando(false)
     }
   }
