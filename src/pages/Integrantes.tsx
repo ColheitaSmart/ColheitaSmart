@@ -10,7 +10,7 @@ type Integrante = {
 }
 
 const integrantes: Integrante[] = [
-  { nome: 'Leticia Felix', rm: '569138', foto: '/images/leticia.jpeg', github: 'https://github.com/LeticiaFelix18', linkedin: 'https://www.linkedin.com/in/leticia-felix-660253286/' },
+  { nome: 'Leticia Felix', rm: '569138', foto: '/images/Leticia.jpeg', github: 'https://github.com/LeticiaFelix18', linkedin: 'https://www.linkedin.com/in/leticia-felix-660253286/' },
   { nome: 'Fabricio Torres Haine', rm: '573332', foto: '/images/febras.jpeg', github: 'https://github.com/FabricioHaine', linkedin: 'https://www.linkedin.com/in/fabricio-haine-1423923a5/' },
   { nome: 'Leonardo Pinto Neto', rm: '571960', foto: '/images/leonardo.jpeg', github: 'https://github.com/leonardo-neto27', linkedin: 'https://www.linkedin.com/in/leonardo-neto-222b653ab' },
   { nome: 'Andre Luiz Ramos Forastieri', rm: '572203', foto: '/images/andre.png', github: 'https://github.com/AndreL050690', linkedin: 'https://www.linkedin.com/in/andr%C3%A9-forastieri-a029913b1/' },
@@ -36,13 +36,13 @@ export default function Integrantes() {
     <main className="min-h-screen bg-[#0B211A] px-5 pb-24 pt-24 text-white sm:px-8 sm:pt-28">
       <div className="mx-auto max-w-6xl">
         <header className="mb-14 text-center sm:mb-16">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Nossa equipe</h1>
+          <h1 id="titulo-equipe" className="text-4xl font-bold tracking-tight sm:text-5xl">Nossa equipe</h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-[#C4D4CB] sm:text-lg">
             Conheça os estudantes responsáveis pelo desenvolvimento do ColheitaSmart.
           </p>
         </header>
 
-        <section aria-label="Integrantes do ColheitaSmart" className="flex flex-wrap justify-center gap-6 lg:gap-7">
+        <section aria-labelledby="titulo-equipe" className="flex flex-wrap justify-center gap-6 lg:gap-7">
           {integrantes.map(integrante => (
             <article key={integrante.rm} className="flex w-full max-w-[350px] flex-col items-center rounded-[24px] border border-[#345847] bg-[#142E24] px-6 pb-9 pt-10 text-center shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-1 sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-19px)]">
               <FotoIntegrante integrante={integrante} />
