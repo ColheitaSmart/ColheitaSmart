@@ -28,6 +28,9 @@ type Lote = {
   armazenamento: string
   temperatura?: number | string | null
   status?: string
+  disponivelKg?: number
+  statusApi?: string
+  origem?: 'api' | 'local'
 }
 
 type Anuncio = {
@@ -50,6 +53,52 @@ type Dados = {
   vendas: Venda[]
 }
 
+const API_LOTES = 'https://colheitasmart-api.onrender.com/lotes'
+
+// IDs conforme a ordem observada no GET; confirmar com a equipe Java.
+const CULTURAS: Record<number, { produto: string; emoji: string }> = {
+  1: { produto: 'Tomate', emoji: '🍅' },
+  2: { produto: 'Banana', emoji: '🍌' },
+  3: { produto: 'Alface', emoji: '🥬' },
+  4: { produto: 'Morango', emoji: '🍓' },
+  5: { produto: 'Manga', emoji: '🥭' },
+  6: { produto: 'Batata', emoji: '🥔' },
+}
+
+type LoteApi = {
+  cdLote: number
+  cdAgricultor: number
+  cdCultura: number
+  qtPesoInicialKg: number
+  qtPesoDisponivelKg: number
+  dtColheita: string
+  dsArmazenamento: string
+  vlPrecoKg?: number
+  dsStatus?: string
+}
+
+function converterLoteApi(item: LoteApi): Lote {
+  const cultura = CULTURAS[Number(item.cdCultura)]
+  const data = String(item.dtColheita || '')
+  const [ano, mes, dia] = data.split('-')
+  const quantidade = Number(item.qtPesoInicialKg)
+  const disponivel = Number(item.qtPesoDisponivelKg)
+  const loteBase: Lote = {
+    id: item.cdLote,
+    produto: cultura?.produto ?? `Cultura #${item.cdCultura}`,
+    emoji: cultura?.emoji ?? '🌱',
+    quantidade: Number.isFinite(quantidade) ? quantidade : 0,
+    disponivelKg: Number.isFinite(disponivel) ? Math.max(0, disponivel) : 0,
+    data: ano && mes && dia ? `${dia}/${mes}/${ano}` : data,
+    armazenamento: item.dsArmazenamento || 'Não informado',
+    statusApi: item.dsStatus,
+    origem: 'api',
+  }
+  // A API indica disponibilidade de estoque, não o risco pós-colheita.
+  // A avaliação abaixo é preliminar, baseada nos campos disponíveis.
+  return avaliarLoteLegado(loteBase)
+}
+
 const CHAVE_LOTES = 'colheitasmart_lotes'
 const CHAVE_ANUNCIOS = 'colheitasmart_anuncios'
 const CHAVE_VENDAS = 'colheitasmart_vendas'
@@ -65,7 +114,7 @@ function carregar<T>(chave: string): T[] {
   }
 }
 
-function lerDados(): Dados {
+function lerDadosLocais(): Dados {
   return {
     lotes: carregar<Lote>(CHAVE_LOTES).filter(
       lote =>
@@ -122,39 +171,45 @@ function arredondar(valor: number) {
 }
 
 export default function MinhaColheita() {
-  const [dados, setDados] = useState<Dados>(lerDados)
+  const [dados, setDados] = useState<Dados>(() => ({ ...lerDadosLocais(), lotes: [] }))
+  const [carregando, setCarregando] = useState(true)
+  const [erroApi, setErroApi] = useState('')
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState('Todos')
 
   const { lotes, anuncios, vendas } = dados
 
   useEffect(() => {
-    function atualizar() {
-      setDados(lerDados())
-    }
+    let ativo = true
+    const controlador = new AbortController()
 
-    function aoMudarStorage(evento: StorageEvent) {
-      if (
-        evento.key === null ||
-        [
-          CHAVE_LOTES,
-          CHAVE_ANUNCIOS,
-          CHAVE_VENDAS,
-        ].includes(evento.key)
-      ) {
-        atualizar()
+    async function atualizar() {
+      try {
+        setCarregando(true)
+        const resposta = await fetch(API_LOTES, {
+          signal: controlador.signal,
+          headers: { Accept: 'application/json' },
+        })
+        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`)
+        const json: unknown = await resposta.json()
+        if (!Array.isArray(json)) throw new Error('Formato inesperado da API')
+        const lotesApi = (json as LoteApi[]).map(converterLoteApi)
+        if (!ativo) return
+        const locais = lerDadosLocais()
+        setDados({ ...locais, lotes: lotesApi })
+        setErroApi('')
+      } catch (erro) {
+        if (!ativo) return
+        setErroApi(`Não foi possível carregar os lotes da API Java: ${erro instanceof Error ? erro.message : 'erro desconhecido'}.`)
+        // Não exibir dados locais como se tivessem sido persistidos na API.
+        setDados({ ...lerDadosLocais(), lotes: [] })
+      } finally {
+        if (ativo) setCarregando(false)
       }
     }
 
-    window.addEventListener('focus', atualizar)
-    window.addEventListener('pageshow', atualizar)
-    window.addEventListener('storage', aoMudarStorage)
-
-    return () => {
-      window.removeEventListener('focus', atualizar)
-      window.removeEventListener('pageshow', atualizar)
-      window.removeEventListener('storage', aoMudarStorage)
-    }
+    void atualizar()
+    return () => { ativo = false; controlador.abort() }
   }, [])
 
   const estoque = useMemo(() => {
@@ -181,12 +236,11 @@ export default function MinhaColheita() {
           )
       )
 
-      const fisico = Math.max(
-        0,
-        arredondar(Number(lote.quantidade) - vendido)
-      )
+      const fisico = lote.origem === 'api'
+        ? Math.max(0, arredondar(Number(lote.disponivelKg ?? 0)))
+        : Math.max(0, arredondar(Number(lote.quantidade) - vendido))
 
-      const reservado = arredondar(
+      const reservadoLocal = arredondar(
         anuncios
           .filter(
             anuncio =>
@@ -218,8 +272,11 @@ export default function MinhaColheita() {
           }, 0)
       )
 
+      const reservado = lote.origem === 'api' ? 0 : reservadoLocal
+
       resultado.set(id, {
-        vendido,
+        // Vendas do navegador não são vendas confirmadas pela API.
+        vendido: lote.origem === 'api' ? 0 : vendido,
         fisico,
         reservado,
         livre: Math.max(
@@ -298,13 +355,13 @@ export default function MinhaColheita() {
       icone: Scale,
     },
     {
-      titulo: 'Quantidade vendida',
+      titulo: 'Vendas locais (não sincronizadas)',
       valor: numero(totalVendido),
       unidade: 'kg',
       icone: CheckCircle2,
     },
     {
-      titulo: 'Reservado em anúncios',
+      titulo: 'Reservas locais (não sincronizadas)',
       valor: numero(totalReservado),
       unidade: 'kg',
       icone: ShoppingBasket,
@@ -418,6 +475,16 @@ export default function MinhaColheita() {
             </div>
           </section>
         )}
+        {carregando && (
+          <p role="status" className="mt-6 rounded-xl bg-white p-4 text-sm text-slate-700">
+            Carregando lotes da API Java...
+          </p>
+        )}
+        {erroApi && (
+          <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {erroApi} Verifique a conexão e atualize a página.
+          </p>
+        )}
         <section id="seus-lotes" className="mt-10 min-w-0 scroll-mt-28 rounded-[30px] border border-[#DFE9DA] bg-white p-5 shadow-[0_12px_40px_rgba(17,52,32,.05)] sm:p-7 md:p-9">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
             <div>
@@ -473,7 +540,11 @@ export default function MinhaColheita() {
             )}
           </div>
 
-          {lotes.length === 0 ? (
+          {carregando ? (
+            <p className="py-12 text-center text-slate-600">Consultando a API Java...</p>
+          ) : erroApi ? (
+            <p className="py-12 text-center text-red-700">Não foi possível exibir os lotes. Tente atualizar a página.</p>
+          ) : lotes.length === 0 ? (
             <div className="flex min-w-0 flex-col items-center px-1 py-12 text-center sm:px-4 sm:py-16">
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#E7F5D6]">
                 <Sprout
