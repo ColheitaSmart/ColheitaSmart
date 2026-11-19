@@ -4,17 +4,18 @@ import { FaGithub, FaLinkedin } from 'react-icons/fa'
 type Integrante = {
   nome: string
   rm: string
+  funcao: string
   foto: string
   github: string
   linkedin: string
 }
 
 const integrantes: Integrante[] = [
-  { nome: 'Leticia Felix', rm: '569138', foto: '/images/Leticia.jpeg', github: 'https://github.com/LeticiaFelix18', linkedin: 'https://www.linkedin.com/in/leticia-felix-660253286/' },
-  { nome: 'Fabricio Torres Haine', rm: '573332', foto: '/images/febras.jpeg', github: 'https://github.com/FabricioHaine', linkedin: 'https://www.linkedin.com/in/fabricio-haine-1423923a5/' },
-  { nome: 'Leonardo Pinto Neto', rm: '571960', foto: '/images/leonardo.jpeg', github: 'https://github.com/leonardo-neto27', linkedin: 'https://www.linkedin.com/in/leonardo-neto-222b653ab' },
-  { nome: 'Andre Luiz Ramos Forastieri', rm: '572203', foto: '/images/andre.png', github: 'https://github.com/AndreL050690', linkedin: 'https://www.linkedin.com/in/andr%C3%A9-forastieri-a029913b1/' },
-  { nome: 'Guilherme de Oliveira Alves', rm: '571683', foto: '/images/guilherme.jpeg', github: 'https://github.com/guilhermeeealvess10', linkedin: 'https://www.linkedin.com/in/guilherme-de-oliveira-alves-19522b363/' },
+  { nome: 'Leticia Felix', rm: '569138', funcao: 'Organização, Java e entrega do projeto', foto: '/images/Leticia.jpeg', github: 'https://github.com/LeticiaFelix18', linkedin: 'https://www.linkedin.com/in/leticia-felix-660253286/' },
+  { nome: 'Fabricio Torres Haine', rm: '573332', funcao: 'Integrante do projeto', foto: '/images/febras.jpeg', github: 'https://github.com/FabricioHaine', linkedin: 'https://www.linkedin.com/in/fabricio-haine-1423923a5/' },
+  { nome: 'Leonardo Pinto Neto', rm: '571960', funcao: 'Integrante do projeto', foto: '/images/leonardo.jpeg', github: 'https://github.com/leonardo-neto27', linkedin: 'https://www.linkedin.com/in/leonardo-neto-222b653ab' },
+  { nome: 'Andre Luiz Ramos Forastieri', rm: '572203', funcao: 'Integrante do projeto', foto: '/images/andre.png', github: 'https://github.com/AndreL050690', linkedin: 'https://www.linkedin.com/in/andr%C3%A9-forastieri-a029913b1/' },
+  { nome: 'Guilherme de Oliveira Alves', rm: '571683', funcao: 'Desenvolvimento front-end', foto: '/images/guilherme.jpeg', github: 'https://github.com/guilhermeeealvess10', linkedin: 'https://www.linkedin.com/in/guilherme-de-oliveira-alves-19522b363/' },
 ]
 
 function FotoIntegrante({ integrante }: { integrante: Integrante }) {
@@ -48,6 +49,7 @@ export default function Integrantes() {
               <FotoIntegrante integrante={integrante} />
               <h2 className="mt-7 flex min-h-[3.5rem] items-center justify-center text-xl font-semibold leading-7 text-[#C3E7BD]">{integrante.nome}</h2>
               <p className="mt-2 text-sm text-[#D5E2D8]">RM {integrante.rm}</p>
+              <p className="mt-2 text-sm font-medium text-[#C3E7BD]">{integrante.funcao}</p>
               <div className="mt-7 flex items-center justify-center gap-4">
                 <a href={integrante.github} target="_blank" rel="noopener noreferrer" aria-label={`GitHub de ${integrante.nome} (abre em nova aba)`} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#4D705D] bg-[#234638] text-white transition-colors hover:bg-[#36674D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C3E7BD]">
                   <FaGithub size={22} aria-hidden="true" />
