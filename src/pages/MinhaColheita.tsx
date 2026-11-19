@@ -1,4 +1,5 @@
 import { avaliarLoteLegado } from '../utils/avaliacaoLote'
+import { listarCulturas, listarLotes, EMOJIS, nomeNormalizado } from '../services/apiColheitas'
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -24,6 +25,7 @@ type Lote = {
   produto: string
   emoji?: string
   quantidade: number
+  quantidadeDisponivel?: number
   data: string
   armazenamento: string
   temperatura?: number | string | null
@@ -122,16 +124,56 @@ function arredondar(valor: number) {
 }
 
 export default function MinhaColheita() {
-  const [dados, setDados] = useState<Dados>(lerDados)
+  const [dados, setDados] = useState<Dados>(() => ({ ...lerDados(), lotes: [] }))
+  const [carregando, setCarregando] = useState(true)
+  const [erroAPI, setErroAPI] = useState('')
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState('Todos')
 
   const { lotes, anuncios, vendas } = dados
 
   useEffect(() => {
-    function atualizar() {
-      setDados(lerDados())
+    let ativo = true
+    let consulta: AbortController | undefined
+    async function atualizar() {
+      consulta?.abort()
+      const atual = new AbortController()
+      consulta = atual
+      setCarregando(true)
+      setErroAPI('')
+      try {
+        const [registros, culturas] = await Promise.all([
+          listarLotes(atual.signal), listarCulturas(atual.signal),
+        ])
+        if (!ativo || atual.signal.aborted) return
+        const locais = lerDados()
+        const lotes = registros.map(registro => {
+          const cultura = culturas.find(c => c.cdCultura === registro.cdCultura)
+          const nome = cultura?.nmCultura || `Cultura ${registro.cdCultura}`
+          const complemento = locais.lotes.find(l => String(l.id) === String(registro.cdLote))
+          return avaliarLoteLegado({
+            id: registro.cdLote, produto: nome, emoji: EMOJIS[nomeNormalizado(nome)] || '🌱',
+            quantidade: registro.qtPesoInicialKg, quantidadeDisponivel: registro.qtPesoDisponivelKg,
+            data: registro.dtColheita.split('-').reverse().join('/'),
+            armazenamento: registro.dsArmazenamento, temperatura: complemento?.temperatura,
+          })
+        })
+        setDados({ ...locais, lotes })
+        try {
+          const ids = new Set(lotes.map(l => String(l.id)))
+          localStorage.setItem(CHAVE_LOTES, JSON.stringify([
+            ...locais.lotes.filter(l => !ids.has(String(l.id))), ...lotes,
+          ]))
+        } catch { /* O cache não substitui a persistência confirmada pela API. */ }
+      } catch (falha) {
+        if (!ativo || atual.signal.aborted) return
+        setDados(dados => ({ ...dados, lotes: [] }))
+        setErroAPI(falha instanceof Error ? falha.message : 'Não foi possível consultar a API Java.')
+      } finally {
+        if (ativo && !atual.signal.aborted) setCarregando(false)
+      }
     }
+    void atualizar()
 
     function aoMudarStorage(evento: StorageEvent) {
       if (
@@ -151,6 +193,8 @@ export default function MinhaColheita() {
     window.addEventListener('storage', aoMudarStorage)
 
     return () => {
+      ativo = false
+      consulta?.abort()
       window.removeEventListener('focus', atualizar)
       window.removeEventListener('pageshow', atualizar)
       window.removeEventListener('storage', aoMudarStorage)
@@ -183,7 +227,7 @@ export default function MinhaColheita() {
 
       const fisico = Math.max(
         0,
-        arredondar(Number(lote.quantidade) - vendido)
+        arredondar(Number(lote.quantidadeDisponivel ?? lote.quantidade) - vendido)
       )
 
       const reservado = arredondar(
@@ -473,7 +517,15 @@ export default function MinhaColheita() {
             )}
           </div>
 
-          {lotes.length === 0 ? (
+          {carregando ? (
+            <p role="status" className="py-12 text-center text-slate-600">Carregando os lotes da API...</p>
+          ) : erroAPI ? (
+            <div role="alert" className="mt-6 rounded-xl bg-red-50 p-5 text-red-800">
+              Não foi possível carregar os lotes. {erroAPI}
+              <button type="button" onClick={() => window.dispatchEvent(new Event('focus'))}
+                className="ml-3 font-bold underline">Tentar novamente</button>
+            </div>
+          ) : lotes.length === 0 ? (
             <div className="flex min-w-0 flex-col items-center px-1 py-12 text-center sm:px-4 sm:py-16">
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#E7F5D6]">
                 <Sprout
