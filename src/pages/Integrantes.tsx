@@ -34,10 +34,10 @@ function FotoIntegrante({ integrante }: { integrante: Integrante }) {
 
 export default function Integrantes() {
   return (
-    <main className="min-h-screen bg-[#0B211A] px-5 pb-24 pt-24 text-white sm:px-8 sm:pt-28">
+    <main className="min-h-screen bg-[#0B211A] px-4 pb-16 pt-24 text-white sm:px-8 sm:pb-24 sm:pt-28">
       <div className="mx-auto max-w-6xl">
         <header className="mb-14 text-center sm:mb-16">
-          <h1 id="titulo-equipe" className="text-4xl font-bold tracking-tight sm:text-5xl">Nossa equipe</h1>
+          <h1 id="titulo-equipe" className="text-3xl font-bold tracking-tight sm:text-5xl">Nossa equipe</h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-[#C4D4CB] sm:text-lg">
             Conheça os estudantes responsáveis pelo desenvolvimento do ColheitaSmart.
           </p>
@@ -51,10 +51,10 @@ export default function Integrantes() {
               <p className="mt-2 text-sm text-[#D5E2D8]">RM {integrante.rm}</p>
               <p className="mt-2 text-sm font-medium text-[#C3E7BD]">{integrante.funcao}</p>
               <div className="mt-7 flex items-center justify-center gap-4" role="group" aria-label={`Redes sociais de ${integrante.nome}`}>
-                <a href={integrante.github} target="_blank" rel="noopener noreferrer" aria-label={`GitHub de ${integrante.nome} (abre em nova aba)`} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#4D705D] bg-[#234638] text-white transition-colors hover:bg-[#36674D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C3E7BD]">
+                <a href={integrante.github} target="_blank" rel="noopener noreferrer" aria-label={`GitHub de ${integrante.nome} (abre em nova aba)`} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#4D705D] bg-[#234638] text-white transition-colors hover:bg-[#36674D] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C3E7BD]">
                   <FaGithub size={22} aria-hidden="true" />
                 </a>
-                <a href={integrante.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`LinkedIn de ${integrante.nome} (abre em nova aba)`} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#4D705D] bg-[#234638] text-white transition-colors hover:bg-[#36674D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C3E7BD]">
+                <a href={integrante.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`LinkedIn de ${integrante.nome} (abre em nova aba)`} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#4D705D] bg-[#234638] text-white transition-colors hover:bg-[#36674D] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C3E7BD]">
                   <FaLinkedin size={22} aria-hidden="true" />
                 </a>
               </div>
