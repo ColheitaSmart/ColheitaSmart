@@ -16,6 +16,10 @@ import Tarefas from './pages/Tarefas'
 import Vendas from './pages/Vendas'
 import Financeiro from './pages/Financeiro'
 
+// Novas páginas de autenticação
+import Login from './pages/login'
+import Cadastro from './pages/cadastro'
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -29,6 +33,10 @@ export default function App() {
           <Route path="/integrantes" element={<Integrantes />} />
           <Route path="/contato" element={<Contato />} />
           <Route path="/faq" element={<FAQ />} />
+
+          {/* Autenticação */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Cadastro />} />
 
           {/* Área de colheitas */}
           <Route path="/colheitas" element={<MinhaColheita />} />

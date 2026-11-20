@@ -12,9 +12,9 @@ type Integrante = {
 
 const integrantes: Integrante[] = [
   { nome: 'Leticia Felix', rm: '569138', funcao: 'Organização, Java e entrega do projeto', foto: '/images/Leticia.jpeg', github: 'https://github.com/LeticiaFelix18', linkedin: 'https://www.linkedin.com/in/leticia-felix-660253286/' },
-  { nome: 'Fabricio Torres Haine', rm: '573332', funcao: 'Integrante do projeto', foto: '/images/febras.jpeg', github: 'https://github.com/FabricioHaine', linkedin: 'https://www.linkedin.com/in/fabricio-haine-1423923a5/' },
-  { nome: 'Leonardo Pinto Neto', rm: '571960', funcao: 'Integrante do projeto', foto: '/images/leonardo.jpeg', github: 'https://github.com/leonardo-neto27', linkedin: 'https://www.linkedin.com/in/leonardo-neto-222b653ab' },
-  { nome: 'Andre Luiz Ramos Forastieri', rm: '572203', funcao: 'Integrante do projeto', foto: '/images/andre.png', github: 'https://github.com/AndreL050690', linkedin: 'https://www.linkedin.com/in/andr%C3%A9-forastieri-a029913b1/' },
+  { nome: 'Fabricio Torres Haine', rm: '573332', funcao: 'Inteligência Artificial', foto: '/images/febras.jpeg', github: 'https://github.com/FabricioHaine', linkedin: 'https://www.linkedin.com/in/fabricio-haine-1423923a5/' },
+  { nome: 'Leonardo Pinto Neto', rm: '571960', funcao: 'Desenvolvimento em Python', foto: '/images/leonardo.jpeg', github: 'https://github.com/leonardo-neto27', linkedin: 'https://www.linkedin.com/in/leonardo-neto-222b653ab' },
+  { nome: 'Andre Luiz Ramos Forastieri', rm: '572203', funcao: 'Desenvolvimento Front-end', foto: '/images/andre.png', github: 'https://github.com/AndreL050690', linkedin: 'https://www.linkedin.com/in/andr%C3%A9-forastieri-a029913b1/' },
   { nome: 'Guilherme de Oliveira Alves', rm: '571683', funcao: 'Desenvolvimento front-end', foto: '/images/guilherme.jpeg', github: 'https://github.com/guilhermeeealvess10', linkedin: 'https://www.linkedin.com/in/guilherme-de-oliveira-alves-19522b363/' },
 ]
 
