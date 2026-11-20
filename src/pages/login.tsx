@@ -1,15 +1,25 @@
 
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LockKeyhole, Mail, Sprout } from 'lucide-react'
 
+const API_URL = 'https://colheitasmart-api-cgir.onrender.com'
+
+type CsrfResponse = {
+  token: string
+  headerName: string
+}
+
 export default function Login() {
+  const navigate = useNavigate()
+
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(false)
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setErro('')
 
@@ -18,8 +28,68 @@ export default function Login() {
       return
     }
 
-    // A autenticação real será conectada à API Java.
-    setErro('A autenticação estará disponível após a integração com a API.')
+    setCarregando(true)
+
+    try {
+      // Busca o token CSRF e cria/recupera a sessão.
+      const csrfResposta = await fetch(`${API_URL}/csrf`, {
+        method: 'GET',
+        credentials: 'include',
+      })
+
+      if (!csrfResposta.ok) {
+        throw new Error('Não foi possível iniciar a sessão.')
+      }
+
+      const csrf: CsrfResponse = await csrfResposta.json()
+
+      // Envia as credenciais ao backend Java.
+      const resposta = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          [csrf.headerName]: csrf.token,
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          senha,
+        }),
+      })
+
+      if (resposta.status === 401) {
+        setErro('E-mail ou senha incorretos.')
+        return
+      }
+
+      if (!resposta.ok) {
+        throw new Error(
+          `Não foi possível entrar. Código: ${resposta.status}`
+        )
+      }
+
+      // Confirma que a sessão autenticada foi mantida.
+      const sessao = await fetch(`${API_URL}/auth/me`, {
+        credentials: 'include',
+      })
+
+      if (!sessao.ok) {
+        setErro(
+          'O login foi recebido, mas o navegador não conseguiu manter a sessão. Verifique as permissões de cookies.'
+        )
+        return
+      }
+
+      navigate('/colheitas')
+    } catch (error) {
+      setErro(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível conectar ao servidor.'
+      )
+    } finally {
+      setCarregando(false)
+    }
   }
 
   return (
@@ -29,7 +99,6 @@ export default function Login() {
         backgroundImage: "url('/images/login-trator.jpg')",
       }}
     >
-      {/* Camada escura para destacar o formulário */}
       <div className="absolute inset-0 bg-gradient-to-r from-[#05291b]/35 via-[#05291b]/40 to-[#05291b]/75" />
 
       <section className="relative z-10 w-full max-w-md rounded-[28px] border border-white/60 bg-white/95 p-7 shadow-2xl backdrop-blur-md sm:p-10">
@@ -88,7 +157,6 @@ export default function Login() {
 
             <div className="relative">
               <LockKeyhole className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#73917c]" />
-
               <input
                 id="login-senha"
                 type={mostrarSenha ? 'text' : 'password'}
@@ -99,7 +167,6 @@ export default function Login() {
                 placeholder="Digite sua senha"
                 className="w-full rounded-xl border border-[#d9e4d9] bg-[#f8faf7] py-3 pl-12 pr-12 text-[#173e2a] outline-none transition focus:border-[#3d925d] focus:ring-2 focus:ring-[#3d925d]/20"
               />
-
               <button
                 type="button"
                 onClick={() => setMostrarSenha(!mostrarSenha)}
@@ -122,9 +189,10 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-[#145c3a] py-3.5 font-bold text-white shadow-md transition hover:bg-[#0c472b]"
+            disabled={carregando}
+            className="w-full rounded-xl bg-[#145c3a] py-3.5 font-bold text-white shadow-md transition hover:bg-[#0c472b] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Entrar na minha conta
+            {carregando ? 'Entrando...' : 'Entrar na minha conta'}
           </button>
         </form>
 

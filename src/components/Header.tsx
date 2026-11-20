@@ -36,7 +36,6 @@ export default function Header() {
       pathname.startsWith(`${link.rota}/`)
   )
 
-  const estaNaAutenticacao =
     pathname === '/login' || pathname === '/cadastro'
 
   const navegacao = estaNoPainel
