@@ -1,6 +1,4 @@
 
- // Triagem demonstrativa; não substitui avaliação profissional ou IA.
-
 export type StatusLote =
   | 'Bom'
   | 'Atenção'
@@ -20,13 +18,23 @@ export type ResultadoAvaliacao = {
   avaliacaoMotivo: string
 }
 
+// Limites ilustrativos para triagem inicial.
+// Não representam prazos garantidos de conservação.
 const limites: Record<string, number> = {
-  Tomate: 7,
-  Banana: 7,
-  Alface: 3,
-  Morango: 3,
-  Manga: 7,
-  Batata: 14,
+  tomate: 7,
+  banana: 7,
+  alface: 3,
+  morango: 3,
+  manga: 7,
+  batata: 14,
+}
+
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
 }
 
 function dataUTC(valor: string): number | null {
@@ -61,14 +69,15 @@ export function avaliarLote(
   }
 
   const colheita = dataUTC(item.data)
-  const limite = limites[item.produto]
+  const produto = normalizar(item.produto || '')
+  const limite = limites[produto]
 
   if (colheita === null || limite === undefined) {
     return {
       ...base,
       status: 'Aguardando avaliação',
       avaliacaoMotivo:
-        'Data ou alimento inválido para a triagem preliminar.',
+        'Data ou alimento não reconhecido para a triagem.',
     }
   }
 
@@ -92,6 +101,23 @@ export function avaliarLote(
     }
   }
 
+  const armazenamento = normalizar(
+    item.armazenamento || ''
+  )
+
+  if (
+    !armazenamento ||
+    armazenamento === 'outro' ||
+    armazenamento === 'nao informado'
+  ) {
+    return {
+      ...base,
+      status: 'Aguardando avaliação',
+      avaliacaoMotivo:
+        'Armazenamento não informado ou insuficiente.',
+    }
+  }
+
   const textoTemperatura =
     item.temperatura == null
       ? ''
@@ -102,51 +128,75 @@ export function avaliarLote(
       ? null
       : Number(textoTemperatura)
 
+  if (
+    temperatura !== null &&
+    !Number.isFinite(temperatura)
+  ) {
+    return {
+      ...base,
+      status: 'Aguardando avaliação',
+      avaliacaoMotivo:
+        'Temperatura informada inválida.',
+    }
+  }
+
+  // Tempo muito acima do limite ilustrativo.
+  if (dias > limite * 2) {
+    return {
+      ...base,
+      status: 'Alto risco',
+      avaliacaoMotivo:
+        'Tempo desde a colheita muito acima do limite preliminar.',
+    }
+  }
+
+  // Tempo acima do limite ilustrativo.
   if (dias > limite) {
     return {
       ...base,
       status: 'Atenção',
       avaliacaoMotivo:
-        'Tempo desde a colheita acima do limite ilustrativo de triagem.',
+        'Tempo desde a colheita acima do limite preliminar.',
     }
   }
 
+  // Temperatura extrema registrada.
   if (
     temperatura !== null &&
-    Number.isFinite(temperatura) &&
     (temperatura < 0 || temperatura > 30)
   ) {
     return {
       ...base,
       status: 'Atenção',
       avaliacaoMotivo:
-        'Temperatura informada fora da faixa geral de triagem.',
+        'Temperatura fora da faixa geral de triagem.',
     }
   }
 
-  if (
-    temperatura === null ||
-    !Number.isFinite(temperatura) ||
-    !item.armazenamento ||
-    item.armazenamento === 'Outro'
-  ) {
+  // Lote próximo do limite de tempo.
+  if (dias >= limite * 0.75) {
     return {
       ...base,
-      status: 'Aguardando avaliação',
+      status: 'Atenção',
       avaliacaoMotivo:
-        'Dados insuficientes para a triagem inicial.',
+        'Tempo desde a colheita próximo do limite preliminar.',
     }
   }
 
+  // Sem temperatura, a triagem continua possível,
+  // mas o resultado tem informações limitadas.
   return {
     ...base,
     status: 'Bom',
     avaliacaoMotivo:
-      'Nenhum alerta identificado pelas regras preliminares; não é garantia de conservação.',
+      temperatura === null
+        ? 'Nenhum alerta identificado por tempo e armazenamento. Temperatura não informada; avaliação preliminar limitada.'
+        : 'Nenhum alerta identificado pelas regras preliminares. A classificação não garante a conservação do alimento.',
   }
 }
 
-// Avalia lotes antigos sem sobrescrever avaliações identificadas.
+// Preserva avaliações previamente identificadas.
+// Reavalia lotes pendentes com os dados disponíveis.
 export function avaliarLoteLegado<
   T extends DadosAvaliacao & {
     status?: string
@@ -155,8 +205,9 @@ export function avaliarLoteLegado<
   }
 >(lote: T): T {
   if (
-    lote.avaliacaoTipo ||
-    (lote.status && lote.status !== 'Aguardando avaliação')
+    lote.avaliacaoTipo &&
+    lote.status &&
+    lote.status !== 'Aguardando avaliação'
   ) {
     return lote
   }

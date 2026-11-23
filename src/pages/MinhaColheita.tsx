@@ -1,4 +1,4 @@
-import { avaliarLoteLegado } from '../utils/avaliacaoLote'
+import { avaliarLote, avaliarLoteLegado } from '../utils/avaliacaoLote'
 import { listarCulturas, listarLotes, EMOJIS, nomeNormalizado } from '../services/apiColheitas'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -151,12 +151,26 @@ export default function MinhaColheita() {
           const cultura = culturas.find(c => c.cdCultura === registro.cdCultura)
           const nome = cultura?.nmCultura || `Cultura ${registro.cdCultura}`
           const complemento = locais.lotes.find(l => String(l.id) === String(registro.cdLote))
-          return avaliarLoteLegado({
-            id: registro.cdLote, produto: nome, emoji: EMOJIS[nomeNormalizado(nome)] || '🌱',
-            quantidade: registro.qtPesoInicialKg, quantidadeDisponivel: registro.qtPesoDisponivelKg,
-            data: registro.dtColheita.split('-').reverse().join('/'),
-            armazenamento: registro.dsArmazenamento, temperatura: complemento?.temperatura,
+          const data = registro.dtColheita.split('-').reverse().join('/')
+          const temperatura = complemento?.temperatura
+          const avaliacao = avaliarLote({
+            produto: nome,
+            data,
+            armazenamento: registro.dsArmazenamento,
+            temperatura,
           })
+
+          return {
+            id: registro.cdLote,
+            produto: nome,
+            emoji: EMOJIS[nomeNormalizado(nome)] || '🌱',
+            quantidade: registro.qtPesoInicialKg,
+            quantidadeDisponivel: registro.qtPesoDisponivelKg,
+            data,
+            armazenamento: registro.dsArmazenamento,
+            temperatura,
+            ...avaliacao,
+          }
         })
         setDados({ ...locais, lotes })
         try {
