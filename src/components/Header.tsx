@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Sprout,
   Menu,
@@ -9,7 +9,10 @@ import {
   House,
   LogIn,
   UserPlus,
+  LogOut,
+  Leaf,
 } from 'lucide-react'
+import { API_BASE } from '../services/apiColheitas'
 
 const linksInstitucionais = [
   { nome: 'Início', rota: '/' },
@@ -28,15 +31,17 @@ const linksPainel = [
 
 export default function Header() {
   const [aberto, setAberto] = useState(false)
+  const [autenticado, setAutenticado] = useState(false)
+  const [verificando, setVerificando] = useState(true)
+
   const { pathname } = useLocation()
+  const navigate = useNavigate()
 
   const estaNoPainel = linksPainel.some(
     link =>
       pathname === link.rota ||
       pathname.startsWith(`${link.rota}/`)
-  )
-
-    pathname === '/login' || pathname === '/cadastro'
+  ) || pathname.startsWith('/colheitas/')
 
   const navegacao = estaNoPainel
     ? linksPainel
@@ -45,6 +50,82 @@ export default function Header() {
   useEffect(() => {
     setAberto(false)
   }, [pathname])
+
+  // Confere a sessão real na API original.
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function verificarLogin() {
+      setVerificando(true)
+
+      try {
+        const resposta = await fetch(`${API_BASE}/auth/me`, {
+          method: 'GET',
+          credentials: 'include',
+          signal: controller.signal,
+        })
+
+        if (!controller.signal.aborted) {
+          setAutenticado(resposta.ok)
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setAutenticado(false)
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setVerificando(false)
+        }
+      }
+    }
+
+    void verificarLogin()
+
+    return () => controller.abort()
+  }, [pathname])
+
+  async function sair() {
+    try {
+      const csrfResposta = await fetch(`${API_BASE}/csrf`, {
+        credentials: 'include',
+      })
+
+      if (!csrfResposta.ok) {
+        throw new Error('Não foi possível obter o CSRF.')
+      }
+
+      const csrf: {
+        token: string
+        headerName: string
+      } = await csrfResposta.json()
+
+      const resposta = await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          [csrf.headerName || 'X-CSRF-TOKEN']: csrf.token,
+        },
+      })
+
+      if (!resposta.ok) {
+        throw new Error('Não foi possível encerrar a sessão.')
+      }
+
+      setAutenticado(false)
+      setAberto(false)
+      navigate('/')
+    } catch {
+      window.alert(
+        'Não foi possível sair da conta. Tente novamente.'
+      )
+    }
+  }
+
+  const botaoClaro =
+    'inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 px-4 py-3 text-sm font-semibold text-[#073B2C] transition hover:bg-green-50'
+
+  const botaoVerde =
+    'inline-flex items-center justify-center gap-2 rounded-xl bg-[#073B2C] px-4 py-3 text-sm font-bold text-white transition hover:bg-green-800'
 
   return (
     <header className="sticky top-0 z-50 w-full min-w-0 border-b border-green-100 bg-white/95 backdrop-blur-md">
@@ -89,29 +170,42 @@ export default function Header() {
 
         {/* Botões desktop */}
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
+          {verificando ? (
+            <span className="px-4 text-sm text-slate-400">
+              Verificando...
+            </span>
+          ) : autenticado ? (
+            <>
+              <Link
+                to="/colheitas"
+                className={botaoVerde}
+              >
+                <Leaf size={17} />
+                Minha Colheita
+              </Link>
 
-          {estaNoPainel ? (
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-xl border border-green-200 px-4 py-3 text-sm font-semibold text-[#073B2C] hover:bg-green-50"
-            >
+              <button
+                type="button"
+                onClick={sair}
+                className={botaoClaro}
+              >
+                <LogOut size={17} />
+                Sair
+              </button>
+            </>
+          ) : estaNoPainel ? (
+            <Link to="/" className={botaoClaro}>
               <House size={17} />
               Início
             </Link>
           ) : (
             <>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-xl border border-green-200 px-4 py-3 text-sm font-bold text-[#073B2C] transition hover:bg-green-50"
-              >
+              <Link to="/login" className={botaoClaro}>
                 <LogIn size={17} />
                 Entrar
               </Link>
 
-              <Link
-                to="/cadastro"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#073B2C] px-4 py-3 text-sm font-bold text-white transition hover:bg-green-800"
-              >
+              <Link to="/cadastro" className={botaoVerde}>
                 <UserPlus size={17} />
                 Criar conta
                 <ArrowUpRight size={16} />
@@ -120,7 +214,7 @@ export default function Header() {
           )}
         </div>
 
-        {/* Menu mobile */}
+        {/* Botão do menu mobile */}
         <button
           type="button"
           className="ml-auto shrink-0 rounded-lg p-2 text-green-950 lg:hidden"
@@ -158,8 +252,31 @@ export default function Header() {
           ))}
 
           <div className="mt-4 space-y-2 border-t border-green-100 pt-4">
+            {verificando ? (
+              <p className="py-3 text-center text-sm text-slate-500">
+                Verificando sessão...
+              </p>
+            ) : autenticado ? (
+              <>
+                <Link
+                  to="/colheitas"
+                  onClick={() => setAberto(false)}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-[#073B2C] px-4 py-3 font-bold text-white"
+                >
+                  <Leaf size={18} />
+                  Minha Colheita
+                </Link>
 
-            {estaNoPainel ? (
+                <button
+                  type="button"
+                  onClick={sair}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-green-200 px-4 py-3 font-bold text-[#073B2C]"
+                >
+                  <LogOut size={18} />
+                  Sair da conta
+                </button>
+              </>
+            ) : estaNoPainel ? (
               <Link
                 to="/"
                 onClick={() => setAberto(false)}

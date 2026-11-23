@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { API_BASE, listarLotes, listarCulturas } from '../services/apiColheitas'
 import {
  ArrowRight,
   CheckCircle2,
@@ -50,7 +51,6 @@ type Venda = {
 
 type Aba = 'resumo' | 'anuncios' | 'historico'
 
-const CHAVE_LOTES = 'colheitasmart_lotes'
 const CHAVE_ANUNCIOS = 'colheitasmart_anuncios'
 const CHAVE_VENDAS = 'colheitasmart_vendas'
 
@@ -125,17 +125,11 @@ function dataAtual() {
 export default function Vendas() {
   const [aba, setAba] = useState<Aba>('resumo')
 
-  const [lotes, setLotes] = useState<Lote[]>(() =>
-    carregar<Lote>(CHAVE_LOTES)
-  )
+  const [lotes, setLotes] = useState<Lote[]>([])
 
-  const [anuncios, setAnuncios] = useState<Anuncio[]>(() =>
-    carregar<Anuncio>(CHAVE_ANUNCIOS)
-  )
+  const [anuncios, setAnuncios] = useState<Anuncio[]>([])
 
-  const [vendas, setVendas] = useState<Venda[]>(() =>
-    carregar<Venda>(CHAVE_VENDAS)
-  )
+  const [vendas, setVendas] = useState<Venda[]>([])
 
   const [modalAnuncio, setModalAnuncio] = useState(false)
   const [modalVenda, setModalVenda] = useState<string | null>(null)
@@ -151,32 +145,72 @@ export default function Vendas() {
   const [erro, setErro] = useState('')
   const [erroPersistencia, setErroPersistencia] = useState('')
 
-  // Lê os dados novamente ao voltar para a aba ou após mudanças em outra aba.
-  // A gravação é feita nas ações, evitando sobrescrever dados antigos ao montar.
+  const [usuarioId, setUsuarioId] = useState<number | null>(null)
+  const [carregandoLotes, setCarregandoLotes] = useState(true)
+  const [erroLotes, setErroLotes] = useState('')
+
+  // As chaves antigas permanecem intactas; cada conta passa a ter suas próprias chaves.
+  function chaveUsuario(chave: string): string {
+    if (usuarioId === null) throw new Error('Faça login antes de continuar.')
+    return `${chave}_usuario_${usuarioId}`
+  }
+
   useEffect(() => {
-    function atualizar() {
-      setLotes(carregar<Lote>(CHAVE_LOTES))
-      setAnuncios(carregar<Anuncio>(CHAVE_ANUNCIOS))
-      setVendas(carregar<Venda>(CHAVE_VENDAS))
-    }
-    function aoMudarStorage(evento: StorageEvent) {
-      if (evento.key === null || [CHAVE_LOTES, CHAVE_ANUNCIOS, CHAVE_VENDAS].includes(evento.key)) {
-        atualizar()
+    let ativo = true
+
+    async function carregarDados() {
+      try {
+        setCarregandoLotes(true)
+        setErroLotes('')
+        const resposta = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+        if (!resposta.ok) throw new Error('Sua sessão expirou. Faça login novamente.')
+        const usuario = await resposta.json()
+        const id = Number(usuario.id)
+        if (!Number.isSafeInteger(id) || id <= 0) {
+          throw new Error('Não foi possível identificar o agricultor logado.')
+        }
+
+        const [lotesApi, culturas] = await Promise.all([listarLotes(), listarCulturas()])
+        if (!ativo) return
+        const nomes = new Map(culturas.map(c => [c.cdCultura, c.nmCultura]))
+        const reais: Lote[] = lotesApi
+          .filter(lote => lote.cdAgricultor === id)
+          .map(lote => ({
+            id: lote.cdLote,
+            produto: nomes.get(lote.cdCultura) || `Cultura ${lote.cdCultura}`,
+            quantidade: Number(lote.qtPesoDisponivelKg),
+            data: lote.dtColheita,
+            armazenamento: lote.dsArmazenamento,
+            status: lote.dsStatus,
+          }))
+        setUsuarioId(id)
+        setLotes(reais)
+        setAnuncios(carregar<Anuncio>(`${CHAVE_ANUNCIOS}_usuario_${id}`))
+        setVendas(carregar<Venda>(`${CHAVE_VENDAS}_usuario_${id}`))
+      } catch (falha) {
+        if (!ativo) return
+        setUsuarioId(null)
+        setLotes([])
+        setAnuncios([])
+        setVendas([])
+        setErroLotes(falha instanceof Error ? falha.message : 'Erro ao consultar o Oracle.')
+      } finally {
+        if (ativo) setCarregandoLotes(false)
       }
     }
-    window.addEventListener('focus', atualizar)
-    window.addEventListener('pageshow', atualizar)
-    window.addEventListener('storage', aoMudarStorage)
+
+    void carregarDados()
+    const aoFocar = () => { void carregarDados() }
+    window.addEventListener('focus', aoFocar)
     return () => {
-      window.removeEventListener('focus', atualizar)
-      window.removeEventListener('pageshow', atualizar)
-      window.removeEventListener('storage', aoMudarStorage)
+      ativo = false
+      window.removeEventListener('focus', aoFocar)
     }
   }, [])
 
   function gravar<T>(chave: string, dados: T[]): boolean {
     try {
-      localStorage.setItem(chave, JSON.stringify(dados))
+      localStorage.setItem(chaveUsuario(chave), JSON.stringify(dados))
       setErroPersistencia('')
       return true
     } catch {
@@ -329,12 +363,8 @@ export default function Vendas() {
   }, [anuncios, busca])
 
   function abrirModalAnuncio() {
-    const lotesAtualizados = carregar<Lote>(CHAVE_LOTES)
-    setLotes(lotesAtualizados)
-
-    const primeiroLote = lotesComEstoque.find(lote =>
-      lotesAtualizados.some(atual => atual.id === lote.id)
-    )
+    if (carregandoLotes || usuarioId === null || erroLotes) return
+    const primeiroLote = lotesComEstoque[0]
 
     setLoteSelecionadoId(primeiroLote ? String(primeiroLote.id) : '')
     setQuantidade('')
@@ -364,6 +394,11 @@ export default function Vendas() {
 
     const qtd = Number(quantidade)
     const valor = Number(preco)
+
+    if (usuarioId === null) {
+      setErro('Faça login antes de criar anúncios.')
+      return
+    }
 
     if (!lote) {
       setErro('Selecione um lote cadastrado.')
@@ -421,7 +456,7 @@ export default function Vendas() {
   function registrarVenda(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
 
-    if (!anuncioSelecionado) {
+    if (usuarioId === null || !anuncioSelecionado) {
       return
     }
 
@@ -486,6 +521,7 @@ export default function Vendas() {
   }
 
   function encerrarAnuncio(id: string) {
+    if (usuarioId === null) return
     const atualizados = anuncios.map(anuncio =>
       anuncio.id === id
         ? { ...anuncio, status: 'Encerrado' as const }
@@ -559,6 +595,7 @@ export default function Vendas() {
           <button
             type="button"
             onClick={abrirModalAnuncio}
+              disabled={carregandoLotes || usuarioId === null || !!erroLotes}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#B8F34B] px-6 py-4 font-bold text-[#073B2C] transition hover:bg-lime-200"
           >
             <Plus size={20} />
@@ -568,6 +605,8 @@ export default function Vendas() {
       </section>
 
       <div className="mx-auto max-w-7xl px-6 py-10">
+        {carregandoLotes && <p role="status" className="mb-5 rounded-xl bg-green-50 p-4 text-green-800">Carregando seus lotes do Oracle...</p>}
+        {erroLotes && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-red-700">{erroLotes}</p>}
         {erroPersistencia && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">{erroPersistencia}</p>}
         <div className="grid gap-5 md:grid-cols-3">
           {cartoes.map(item => {
@@ -659,6 +698,7 @@ export default function Vendas() {
               <button
                 type="button"
                 onClick={abrirModalAnuncio}
+              disabled={carregandoLotes || usuarioId === null || !!erroLotes}
                 className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#073B2C] px-6 py-4 font-bold text-white hover:bg-green-800"
               >
                 Criar minha oferta
@@ -826,6 +866,7 @@ export default function Vendas() {
                 <button
                   type="button"
                   onClick={abrirModalAnuncio}
+              disabled={carregandoLotes || usuarioId === null || !!erroLotes}
                   className="mt-6 rounded-xl bg-[#073B2C] px-6 py-3 font-bold text-white"
                 >
                   Criar anúncio

@@ -29,8 +29,6 @@ type Formulario = {
   preco: string
 }
 
-// Agricultor de demonstração existente no Oracle; login será integrado separadamente.
-const ID_AGRICULTOR_DEMO = 1
 
 const produtos: { nome: Produto; emoji: string }[] = [
   { nome: 'Tomate', emoji: '🍅' },
@@ -142,6 +140,19 @@ export default function CadastrarColheita() {
     let cadastrados = 0
 
     try {
+      const respostaUsuario = await fetch(
+        'https://colheitasmart-api-cgir.onrender.com/auth/me',
+        { credentials: 'include' }
+      )
+      if (!respostaUsuario.ok) {
+        throw new Error('Sessão expirada. Faça login novamente.')
+      }
+      const usuario: { id?: number | string } = await respostaUsuario.json()
+      const idAgricultor = Number(usuario.id)
+      if (!Number.isSafeInteger(idAgricultor) || idAgricultor <= 0) {
+        throw new Error('Não foi possível identificar o agricultor autenticado.')
+      }
+
       const culturas = await listarCulturas()
       // Cada alimento selecionado corresponde a um POST independente.
       for (const item of selecionados) {
@@ -153,7 +164,7 @@ export default function CadastrarColheita() {
           culturas.push(cultura)
         }
         const corpo = {
-          cdAgricultor: ID_AGRICULTOR_DEMO,
+          cdAgricultor: idAgricultor,
           cdCultura: cultura.cdCultura,
           qtPesoInicialKg: quantidade,
           qtPesoDisponivelKg: quantidade,
