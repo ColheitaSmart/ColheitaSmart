@@ -252,11 +252,52 @@ export default function DetalhesColheita() {
           </section>
         </div>
 
-        <aside className="min-w-0 space-y-5">
-          <section className="rounded-3xl border border-green-100 bg-white p-6 shadow-sm sm:p-7"><div className="flex items-center gap-3"><CircleAlert size={23} className="shrink-0 text-green-700" /><h2 className="text-lg font-extrabold text-[#073B2C]">Situação do lote</h2></div><span className={`mt-5 inline-flex max-w-full rounded-full px-4 py-2 text-sm font-bold ${classeStatus}`}>{nomeStatus}</span><p className="mt-4 text-sm leading-relaxed text-slate-600">{pendente ? 'A avaliação automática ainda não foi realizada. As informações cadastradas serão utilizadas na futura análise de risco.' : 'Esta é a situação registrada para o lote. Consulte a origem e a data da avaliação quando a análise automática estiver integrada.'}</p></section>
-          <section className="rounded-3xl bg-[#073B2C] p-6 text-white sm:p-7"><Sprout size={28} className="text-lime-300" /><h2 className="mt-5 text-xl font-extrabold">Cada lote conta.</h2><p className="mt-3 text-sm leading-relaxed text-green-100">Organizar as informações após a colheita é o primeiro passo para reduzir perdas e planejar a comercialização.</p><Link to="/colheitas/nova" className="mt-6 inline-flex flex-wrap items-center gap-2 rounded-xl bg-[#B8F34B] px-5 py-3 font-bold text-[#073B2C]">Cadastrar outro lote <ArrowRight size={17} /></Link></section>
-        </aside>
-      </div>
-    </main>
+       
+<aside className="min-w-0 space-y-5">
+  <section className="rounded-3xl border border-green-100 bg-white p-6 shadow-sm sm:p-7">
+    <div className="flex items-center gap-3">
+      <CircleAlert
+        size={23}
+        className="shrink-0 text-green-700"
+      />
+      <h2 className="text-lg font-extrabold text-[#073B2C]">
+        Situação do lote
+      </h2>
+    </div>
+    <span
+      className={`mt-5 inline-flex max-w-full rounded-full px-4 py-2 text-sm font-bold ${classeStatus}`}>
+      {nomeStatus}
+    </span>
+
+    <p className="mt-4 text-sm leading-relaxed text-slate-600">
+      {pendente
+        ? 'Este lote está aguardando avaliação. Mantenha as informações de armazenamento atualizadas para acompanhar suas condições de conservação.'
+        : 'Acompanhe a situação registrada deste lote e consulte as informações da colheita para auxiliar na conservação e no planejamento da comercialização.'}
+    </p>
+  </section>
+  <section className="rounded-3xl bg-[#073B2C] p-6 text-white sm:p-7">
+    <Sprout size={28} className="text-lime-300" />
+
+    <h2 className="mt-5 text-xl font-extrabold">
+      Cada lote conta.
+    </h2>
+
+    <p className="mt-3 text-sm leading-relaxed text-green-100">
+      Organizar as informações após a colheita é o primeiro
+      passo para reduzir perdas e planejar a comercialização.
+    </p>
+
+    <Link
+      to="/colheitas/nova"
+      className="mt-6 inline-flex flex-wrap items-center gap-2 rounded-xl bg-[#B8F34B] px-5 py-3 font-bold text-[#073B2C]">
+      Cadastrar outro lote
+      <ArrowRight size={17}/>
+      </Link>
+    </section>
+  </aside>
+</div>
+
+      
+  </main>
   )
 }
